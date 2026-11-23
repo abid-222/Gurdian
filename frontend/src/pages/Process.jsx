@@ -263,18 +263,17 @@ export default function Process({ src }) {
               </div>
               <div>
                 <h3 style={{ margin: 0, color: 'var(--fg)', fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em' }}>
-                  Live Process Sentinel & 3D Execution Hierarchy
+                  Live Process Monitor & 3D Tree Explorer
                 </h3>
                 <span className="dim" style={{ fontSize: 11 }}>
-                  Real-time parent-child lineage tree, memory dump validation, and anomaly tracking
+                  Real-time application hierarchy, resource consumption, and threat inspection
                 </span>
               </div>
-              <Badge v={badCount > 0 ? `${badCount} THREATS` : 'ALL SECURE'} tone={badCount > 0 ? 'r' : 'g'} />
+              <Badge v={badCount > 0 ? `${badCount} THREATS DETECTED` : 'ALL PROCESSES SECURE'} tone={badCount > 0 ? 'r' : 'g'} />
             </div>
 
             <p className="dim" style={{ fontSize: 12.5, margin: '6px 0 0', maxWidth: 740, lineHeight: 1.5 }}>
-              Continuous inspection of operating system process tables (<code style={{ color: 'var(--c)' }}>/proc/[pid]</code> and Windows CIM instances).
-              Instantly flags memory-resident deleted binaries (<code style={{ color: 'var(--r)' }}>deleted_binary</code>) and rogue executions from world-writable temporary directories (<code style={{ color: 'var(--a)' }}>tmp_exec</code>).
+              Continuously monitors all running programs and background processes. Instantly alerts you to memory-resident threats, suspicious temporary scripts, or unexpected processor spikes.
             </p>
           </div>
 

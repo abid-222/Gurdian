@@ -119,7 +119,7 @@ export default function Settings({ theme, setTheme }) {
       {/* System Security Environment */}
       <Card title={<span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Lock size={16} color="var(--c)" /> Security Architecture Policy</span>}>
         <div className="dim" style={{ lineHeight: 1.6 }}>
-          <div>• <b>Zero Mock Mode</b>: Strictly real kernel metrics via /proc/stat, /proc/net/dev, and Windows PowerShell WMI.</div>
+          <div>• <b>Zero Mock Mode</b>: 100% genuine real-time metrics directly from your computer hardware.</div>
           <div>• <b>Read-Only Collectors</b>: No collectors execute destructive commands or modify host state.</div>
           <div>• <b>Token Handshake</b>: Vite proxy injects ephemeral cryptographic X-Guardian-Token on all requests.</div>
           <div>• <b>Sandboxed Database</b>: State, baseline hashes, and events reside in isolated SQLite database.</div>
