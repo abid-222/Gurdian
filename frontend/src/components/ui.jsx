@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { Loader2, Info } from 'lucide-react'
 import { LIMITED } from '../hooks/useScan'
 
 // ─── TONE MAP ─────────────────────────────────────────────────────────────────
@@ -44,7 +45,8 @@ export const Btn = ({ variant, on, loading, children, className = '', ...p }) =>
       disabled={loading || p.disabled}
       {...p}
     >
-      {loading ? '⏳ ' : ''}{children}
+      {loading && <Loader2 size={13} className="spin" style={{ display: 'inline-block' }} />}
+      {children}
     </button>
   )
 }
@@ -89,16 +91,16 @@ export const ErrorBox = ({ error, errors = [] }) => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                padding: '10px 14px',
+                padding: '8px 14px',
                 borderRadius: '8px',
-                background: 'rgba(59,130,246,0.08)',
-                border: '1px solid rgba(59,130,246,0.2)',
-                color: 'var(--text-secondary, #555)',
-                fontSize: '13px',
+                background: 'rgba(56, 189, 248, 0.08)',
+                border: '1px solid rgba(56, 189, 248, 0.25)',
+                color: 'var(--fg)',
+                fontSize: '12px',
                 marginBottom: '6px',
               }}
             >
-              <span style={{ fontSize: '15px' }}>ℹ️</span>
+              <Info size={15} color="var(--c)" />
               <span>Windows data unavailable on this host.</span>
             </div>
           )

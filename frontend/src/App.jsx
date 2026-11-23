@@ -1,4 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  LayoutDashboard,
+  Activity,
+  Server,
+  Cpu,
+  Network,
+  FolderLock,
+  KeyRound,
+  Database,
+  Usb,
+  Bell,
+  Clock,
+  FileBarChart,
+  Terminal as TerminalIcon,
+  Crosshair,
+  Settings as SettingsIcon,
+  Info,
+  Shield,
+  Search,
+  AlertTriangle,
+  X
+} from 'lucide-react'
 import { api } from './api'
 import Alerts from './pages/Alerts'
 import Auth from './pages/Auth'
@@ -6,14 +28,14 @@ import Demo from './pages/Demo'
 import FileVault from './pages/FileVault'
 import Generic from './pages/Generic'
 import Live from './pages/Live'
-import Network from './pages/Network'
+import NetworkPage from './pages/Network'
 import Overview from './pages/Overview'
 import Persistence from './pages/Persistence'
 import Process from './pages/Process'
 import Reports from './pages/Reports'
 import Terminal from './pages/Terminal'
 import Timeline from './pages/Timeline'
-import Usb from './pages/Usb'
+import UsbPage from './pages/Usb'
 import Settings from './pages/Settings'
 import About from './pages/About'
 
@@ -22,11 +44,11 @@ const VIEWS = {
   overview: Overview,
   live: Live,
   process: Process,
-  network: Network,
+  network: NetworkPage,
   auth: Auth,
   integrity: FileVault,
   persistence: Persistence,
-  usb: Usb,
+  usb: UsbPage,
   system: Generic,
   alerts: Alerts,
   timeline: Timeline,
@@ -42,37 +64,37 @@ const NAV_GROUPS = [
   {
     label: 'MONITOR',
     items: [
-      { key: 'overview',  icon: '🏠', label: 'Overview'       },
-      { key: 'live',      icon: '📊', label: 'Live Stream'    },
-      { key: 'system',    icon: '⚙️', label: 'System'         },
+      { key: 'overview',  icon: LayoutDashboard, label: 'Overview'       },
+      { key: 'live',      icon: Activity,        label: 'Live Stream'    },
+      { key: 'system',    icon: Server,          label: 'System'         },
     ],
   },
   {
     label: 'SECURITY',
     items: [
-      { key: 'process',     icon: '🔍', label: 'Processes'      },
-      { key: 'network',     icon: '🌐', label: 'Network'         },
-      { key: 'integrity',   icon: '🗂️', label: 'File Integrity' },
-      { key: 'auth',        icon: '🔒', label: 'Login Activity' },
-      { key: 'persistence', icon: '💾', label: 'Persistence'    },
-      { key: 'usb',         icon: '🔌', label: 'USB Devices'    },
+      { key: 'process',     icon: Cpu,        label: 'Processes'      },
+      { key: 'network',     icon: Network,    label: 'Network'         },
+      { key: 'integrity',   icon: FolderLock, label: 'File Integrity' },
+      { key: 'auth',        icon: KeyRound,   label: 'Login Activity' },
+      { key: 'persistence', icon: Database,   label: 'Persistence'    },
+      { key: 'usb',         icon: Usb,        label: 'USB Devices'    },
     ],
   },
   {
     label: 'EVENTS',
     items: [
-      { key: 'alerts',   icon: '🔔', label: 'Alerts'    },
-      { key: 'timeline', icon: '📅', label: 'Timeline'  },
-      { key: 'reports',  icon: '📈', label: 'Reports'   },
+      { key: 'alerts',   icon: Bell,         label: 'Alerts'    },
+      { key: 'timeline', icon: Clock,        label: 'Timeline'  },
+      { key: 'reports',  icon: FileBarChart, label: 'Reports'   },
     ],
   },
   {
     label: 'TOOLS',
     items: [
-      { key: 'terminal', icon: '💻', label: 'Terminal' },
-      { key: 'demo',     icon: '🎯', label: 'Demo Lab' },
-      { key: 'settings', icon: '⚙️', label: 'Settings' },
-      { key: 'about',    icon: 'ℹ️', label: 'About'    },
+      { key: 'terminal', icon: TerminalIcon, label: 'Terminal' },
+      { key: 'demo',     icon: Crosshair,    label: 'Demo Lab' },
+      { key: 'settings', icon: SettingsIcon, label: 'Settings' },
+      { key: 'about',    icon: Info,         label: 'About'    },
     ],
   },
 ]
@@ -105,26 +127,33 @@ function CommandPalette({ go, close }) {
   return (
     <div className="pal-overlay" onClick={close}>
       <div className="pal" onClick={e => e.stopPropagation()}>
-        <input
-          ref={inputRef}
-          value={q}
-          placeholder="Search pages or press Esc to close…"
-          onChange={e => setQ(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Enter' && matches[0]) go(matches[0].key)
-            if (e.key === 'Escape') close()
-          }}
-        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, paddingBottom: 8, borderBottom: '1px solid var(--line)' }}>
+          <Search size={16} color="var(--dim)" />
+          <input
+            ref={inputRef}
+            value={q}
+            placeholder="Type to jump to any page... (Esc to close)"
+            style={{ margin: 0, padding: '4px 0', border: 'none', background: 'transparent' }}
+            onChange={e => setQ(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && matches[0]) go(matches[0].key)
+              if (e.key === 'Escape') close()
+            }}
+          />
+        </div>
         <div>
-          {matches.map(item => (
-            <div key={item.key} onClick={() => go(item.key)} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 16 }}>{item.icon}</span>
-              <span style={{ fontWeight: 500 }}>{item.label}</span>
-              <span className="dim" style={{ marginLeft: 'auto' }}>#{item.key}</span>
-            </div>
-          ))}
+          {matches.map(item => {
+            const Icon = item.icon
+            return (
+              <div key={item.key} onClick={() => go(item.key)} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ color: 'var(--c)', display: 'flex' }}><Icon size={16} /></span>
+                <span style={{ fontWeight: 500 }}>{item.label}</span>
+                <span className="dim" style={{ marginLeft: 'auto', fontSize: 11 }}>#{item.key}</span>
+              </div>
+            )
+          })}
           {matches.length === 0 && (
-            <div className="dim" style={{ padding: '8px 12px' }}>No pages match "{q}"</div>
+            <div className="dim" style={{ padding: '12px', textAlign: 'center' }}>No pages match "{q}"</div>
           )}
         </div>
       </div>
@@ -155,7 +184,8 @@ function Main() {
   const [hasHighAlert, setHasHighAlert] = useState(false)
 
   // Find meta for current page
-  const currentItem = ALL_ITEMS.find(i => i.key === page) || { icon: '🏠', label: 'Overview' }
+  const currentItem = ALL_ITEMS.find(i => i.key === page) || { icon: LayoutDashboard, label: 'Overview' }
+  const CurrentIcon = currentItem.icon
   const risk = riskLevel(score)
 
   // Sync theme to <html>
@@ -221,8 +251,9 @@ function Main() {
           return (
             <div key={t.id} className="toast" style={{ borderLeftColor: tr.color }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: tr.color, fontWeight: 700 }}>
-                  {isSerious ? '⚠️' : '🔔'} {tr.label} THREAT DETECTED
+                <span style={{ color: tr.color, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {isSerious ? <AlertTriangle size={15} /> : <Bell size={15} />}
+                  <span>{tr.label} THREAT DETECTED</span>
                 </span>
                 <button
                   className="btn btn-sm btn-danger"
@@ -230,10 +261,10 @@ function Main() {
                   onClick={() => dismissToast(t.id)}
                   aria-label="Dismiss"
                 >
-                  ✕
+                  <X size={14} />
                 </button>
               </div>
-              <div style={{ marginTop: 4, fontSize: 11 }}>
+              <div style={{ marginTop: 6, fontSize: 11, color: 'var(--dim)' }}>
                 [{t.module}] {t.message}
               </div>
             </div>
@@ -249,37 +280,54 @@ function Main() {
         />
       )}
 
-      {/* ── Top Header ── */}
+      {/* ── Top Header Bar ── */}
       <header className="top">
         <div className="top-brand">
-          <span style={{ fontSize: 18 }}>🛡️</span>
-          <span style={{ fontWeight: 700, fontSize: 14 }}>Smart OS Guardian</span>
-          <span className="badge p">v6.0</span>
+          <div className="brand-icon-box">
+            <Shield size={18} strokeWidth={2.2} />
+          </div>
+          <span className="brand-title">Smart OS Guardian</span>
+          <span className="badge p">PRO v6.0</span>
         </div>
 
         <span style={{ flex: 1 }} />
 
         {/* Status dot + risk chip */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 12 }}>
-          <span
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 10 }}>
+          <div
             style={{
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              background: hasHighAlert ? 'var(--r)' : 'var(--g)',
-              display: 'inline-block'
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid var(--line)',
+              padding: '3px 10px',
+              borderRadius: 20
             }}
-            title={hasHighAlert ? 'Threat active' : 'All clear'}
-          />
+          >
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                background: hasHighAlert ? 'var(--r)' : 'var(--g)',
+                boxShadow: hasHighAlert ? '0 0 8px var(--r)' : '0 0 8px var(--g)'
+              }}
+            />
+            <span style={{ fontSize: 11, fontWeight: 600, color: hasHighAlert ? 'var(--r)' : 'var(--g)' }}>
+              {hasHighAlert ? 'ALERT ACTIVE' : 'HOST SECURED'}
+            </span>
+          </div>
+
           <span
             className="badge"
             style={{
-              background: risk.color + '20',
+              background: risk.color + '18',
               color: risk.color,
               borderColor: risk.color,
-              padding: '2px 8px',
+              padding: '3px 10px',
               fontSize: 11,
-              fontWeight: 600,
+              fontWeight: 700,
               borderRadius: 14
             }}
           >
@@ -296,60 +344,65 @@ function Main() {
             background: 'var(--panel)',
             color: 'var(--fg)',
             border: '1px solid var(--line)',
-            borderRadius: 6,
-            padding: '3px 8px',
+            borderRadius: 8,
+            padding: '5px 10px',
             fontSize: 11,
             marginRight: 8,
             cursor: 'pointer'
           }}
         >
-          <option value="ubuntu">Ubuntu</option>
-          <option value="ubuntu-dark">Ubuntu Dark</option>
+          <option value="ubuntu">Dark Horizon</option>
           <option value="tokyo-night">Tokyo Night</option>
-          <option value="nord">Nord</option>
-          <option value="dracula">Dracula</option>
+          <option value="nord">Nord Arctic</option>
+          <option value="dracula">Dracula Core</option>
         </select>
 
         {/* Source selector */}
-        <span className="dim" style={{ marginRight: 4 }}>Source:</span>
-        {['linux', 'windows', 'both'].map(s => (
-          <button
-            key={s}
-            className={`btn btn-sm ${s === src ? 'on' : ''}`}
-            style={{ margin: '0 2px', padding: '3px 8px', fontSize: 11 }}
-            onClick={() => setSrc(s)}
-          >
-            {s === 'linux' ? '🐧' : s === 'windows' ? '🪟' : '⊕'} {s}
-          </button>
-        ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(0,0,0,0.25)', padding: '2px 4px', borderRadius: 8, border: '1px solid var(--line)' }}>
+          <span className="dim" style={{ fontSize: 10, textTransform: 'uppercase', padding: '0 4px', fontWeight: 600 }}>Source:</span>
+          {['linux', 'windows', 'both'].map(s => (
+            <button
+              key={s}
+              className={`btn btn-sm ${s === src ? 'on' : ''}`}
+              style={{ margin: 0, padding: '3px 8px', fontSize: 11, textTransform: 'uppercase' }}
+              onClick={() => setSrc(s)}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
 
-        {/* Ctrl+K hint */}
+        {/* Ctrl+K hint button */}
         <button
           className="btn btn-sm"
-          style={{ marginLeft: 6, padding: '3px 8px', fontSize: 11 }}
+          style={{ marginLeft: 6, padding: '4px 10px', fontSize: 11 }}
           onClick={() => setPal(true)}
           title="Command palette (Ctrl+K)"
         >
-          <kbd style={{ fontSize: 10 }}>Ctrl+K</kbd>
+          <kbd style={{ fontSize: 10, background: 'rgba(255,255,255,0.08)', padding: '2px 4px', borderRadius: 3 }}>Ctrl+K</kbd>
         </button>
       </header>
 
       {/* ── Sidebar ── */}
       <nav className="side" aria-label="Main navigation">
         {NAV_GROUPS.map(group => (
-          <div key={group.label} style={{ marginBottom: 4 }}>
+          <div key={group.label} style={{ marginBottom: 6 }}>
             <div className="side-group-label">{group.label}</div>
-            {group.items.map(item => (
-              <button
-                key={item.key}
-                className={`side-btn ${item.key === page ? 'on' : ''}`}
-                onClick={() => navigate(item.key)}
-                aria-current={item.key === page ? 'page' : undefined}
-              >
-                <span className="side-btn-icon">{item.icon}</span>
-                <span>{item.label}</span>
-              </button>
-            ))}
+            {group.items.map(item => {
+              const Icon = item.icon
+              const isActive = item.key === page
+              return (
+                <button
+                  key={item.key}
+                  className={`side-btn ${isActive ? 'on' : ''}`}
+                  onClick={() => navigate(item.key)}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  <span className="side-btn-icon"><Icon size={16} /></span>
+                  <span>{item.label}</span>
+                </button>
+              )
+            })}
           </div>
         ))}
       </nav>
@@ -358,11 +411,11 @@ function Main() {
       <main className="main">
         <div className="main-header">
           <h2>
-            <span>{currentItem.icon}</span>
+            <CurrentIcon size={22} color="var(--c)" />
             <span>{currentItem.label}</span>
           </h2>
           <span className="dim" style={{ fontSize: 12 }}>
-            Press <kbd style={{ background: 'var(--panel)', padding: '2px 5px', borderRadius: 4, border: '1px solid var(--line)' }}>Ctrl+K</kbd> to jump
+            Press <kbd style={{ background: 'var(--panel)', padding: '2px 6px', borderRadius: 4, border: '1px solid var(--line)' }}>Ctrl+K</kbd> for quick command jump
           </span>
         </div>
         <div>

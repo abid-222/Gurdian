@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Cpu, Info } from 'lucide-react'
 import { saveBaseline, toCsv } from '../api'
 import { useScan } from '../hooks/useScan'
 import { Badge, Btn, Card } from '../components/ui'
@@ -80,7 +81,7 @@ function EmptyState({ onScan, loading }) {
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       justifyContent: 'center', padding: '48px 24px', gap: 16, textAlign: 'center'
     }}>
-      <div style={{ fontSize: 48, opacity: 0.5 }}>🔍</div>
+      <div style={{ opacity: 0.7 }}><Cpu size={48} strokeWidth={1.5} color="var(--c)" /></div>
       <div style={{ fontWeight: 600, fontSize: '1.1em' }}>No process data loaded</div>
       <div className="dim">Click the button below to scan running processes on this host.</div>
       <Btn onClick={onScan} loading={loading}>Scan Processes</Btn>
@@ -176,18 +177,18 @@ export default function Process({ src }) {
       {/* Windows info banner */}
       {winErrors.length > 0 && (
         <div style={{
-          background: 'rgba(59,130,246,0.1)',
-          border: '1px solid rgba(59,130,246,0.35)',
+          background: 'rgba(56,189,248,0.08)',
+          border: '1px solid rgba(56,189,248,0.25)',
           borderRadius: 8,
           padding: '10px 14px',
           marginBottom: 12,
           color: 'var(--fg)',
           display: 'flex',
-          alignItems: 'flex-start',
-          gap: 8
+          alignItems: 'center',
+          gap: 10
         }}>
-          <span>ℹ️</span>
-          <span>Windows collector unavailable on this host. Showing Linux data only.</span>
+          <Info size={16} color="var(--c)" />
+          <span style={{ fontSize: 12 }}>Windows collector unavailable on this host. Showing Linux data only.</span>
         </div>
       )}
 

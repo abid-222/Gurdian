@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Search, RefreshCw, FileText, Code2 } from 'lucide-react'
 import { api } from '../api'
 import { useLive } from '../hooks/useLive'
 import { Badge, Btn, Card, Gauge } from '../components/ui'
@@ -203,17 +204,21 @@ export default function Overview({ src, bump }) {
         {/* Quick actions */}
         <Card title="Quick Actions">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <Btn onClick={full} loading={prog !== null} style={{ width: '100%' }}>
-              {prog === null ? '🔍  Run Full Scan' : `Scanning ${MODULES[prog]} (${prog + 1}/${MODULES.length})…`}
+            <Btn onClick={full} loading={prog !== null} style={{ width: '100%', justifyContent: 'center' }}>
+              <Search size={14} /> {prog === null ? 'Run Full Scan' : `Scanning ${MODULES[prog]} (${prog + 1}/${MODULES.length})…`}
             </Btn>
-            <Btn onClick={load} loading={loading} style={{ width: '100%' }}>
-              🔄  Refresh Dashboard
+            <Btn onClick={load} loading={loading} style={{ width: '100%', justifyContent: 'center' }}>
+              <RefreshCw size={14} /> Refresh Dashboard
             </Btn>
             <a href="/api/report?fmt=html" download style={{ display: 'block' }}>
-              <Btn style={{ width: '100%' }}>📄  Export HTML Report</Btn>
+              <Btn style={{ width: '100%', justifyContent: 'center' }}>
+                <FileText size={14} /> Export HTML Report
+              </Btn>
             </a>
             <a href="/api/report?fmt=json" download style={{ display: 'block' }}>
-              <Btn style={{ width: '100%' }}>📦  Export JSON Report</Btn>
+              <Btn style={{ width: '100%', justifyContent: 'center' }}>
+                <Code2 size={14} /> Export JSON Report
+              </Btn>
             </a>
           </div>
 
