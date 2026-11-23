@@ -120,6 +120,7 @@ export default function Process({ src }) {
   const all  = data?.rows || []
   const rows = bad ? all.filter(r => r.flag !== 'ok') : all
   const view = tree ? flat(rows, open) : rows
+  const badCount = all.filter(r => r.flag !== 'ok').length
 
   // Build a lookup map for the detail panel
   const byKey = new Map(all.map(r => [r.source + r.pid, r]))
@@ -156,6 +157,30 @@ export default function Process({ src }) {
 
   return (
     <div>
+      {/* ── 3D Security Module Banner ── */}
+      <div className="status-banner-3d">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <Cpu size={22} color="var(--c)" />
+              <h3 style={{ margin: 0, color: 'var(--fg)', fontSize: 16 }}>
+                Active Process Sentinel & Ghost Binary Detection
+              </h3>
+              <Badge v={badCount > 0 ? `${badCount} SUSPICIOUS` : 'SECURE'} tone={badCount > 0 ? 'r' : 'g'} />
+            </div>
+            <p className="dim" style={{ fontSize: 13, margin: '4px 0 0', maxWidth: 740, lineHeight: 1.5 }}>
+              Continuous inspection of Linux <code style={{ color: 'var(--c)' }}>/proc/[pid]</code> and Windows CIM instances.
+              Automatically flags memory-only deleted binaries (<code style={{ color: 'var(--r)' }}>deleted_binary</code>) and rogue executions from world-writable temporary directories (<code style={{ color: 'var(--a)' }}>tmp_exec</code>).
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="badge c" style={{ fontSize: 11, padding: '4px 10px' }}>
+              Active PIDs: {all.length}
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* Toolbar */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12, alignItems: 'center' }}>
         <Btn onClick={run} loading={loading}>Scan Processes</Btn>

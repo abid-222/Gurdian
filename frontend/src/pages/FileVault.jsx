@@ -34,6 +34,30 @@ export default function FileVault({ src }) {
 
   return (
     <div>
+      {/* ── 3D Security Module Banner ── */}
+      <div className="status-banner-3d">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <FileCheck2 size={22} color="var(--c)" />
+              <h3 style={{ margin: 0, color: 'var(--fg)', fontSize: 16 }}>
+                Cryptographic File Integrity Vault & SHA-256 Tamper Sentinel
+              </h3>
+              <Badge v={changed.length > 0 ? `${changed.length} MODIFIED` : 'INTACT'} tone={changed.length > 0 ? 'r' : 'g'} />
+            </div>
+            <p className="dim" style={{ fontSize: 13, margin: '4px 0 0', maxWidth: 740, lineHeight: 1.5 }}>
+              Continuous cryptographic hashing of critical OS configuration files (<code style={{ color: 'var(--c)' }}>/etc/passwd</code>, <code style={{ color: 'var(--c)' }}>/etc/shadow</code>, <code style={{ color: 'var(--c)' }}>/etc/sudoers</code>).
+              Instantly detects tampering, privilege escalation attempts, or unauthorized root user additions.
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="badge c" style={{ fontSize: 11, padding: '4px 10px' }}>
+              Watched Files: {rows.length}
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* ── Toolbar ── */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
         <Btn onClick={run} loading={loading}>

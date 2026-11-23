@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Terminal as XTerm } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
-import { Copy, Check } from 'lucide-react'
+import { Copy, Check, Terminal as TerminalIcon } from 'lucide-react'
 import { Btn } from '../components/ui'
 
 const CMD = [
@@ -108,34 +108,86 @@ export default function Terminal() {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
-        {CMD.map(c => (
-          <Btn key={c} onClick={() => send.current(c)}>{c}</Btn>
-        ))}
-        <Btn onClick={copyOutput} style={{ marginLeft: 'auto' }}>
-          {copied ? (
-            <>
-              <Check size={14} /> Copied
-            </>
-          ) : (
-            <>
-              <Copy size={14} /> Copy Output
-            </>
-          )}
-        </Btn>
-      </div>
-      <p className="dim" style={{ margin: '0 0 10px' }}>
-        Sandboxed read-only terminal with Tab auto-completion, ↑/↓ history, and command output clipboard export.
-      </p>
+      {/* ── 3D Terminal Window Container ── */}
       <div
-        ref={ref}
         style={{
-          border: '1px solid var(--line)',
-          borderRadius: 6,
+          background: '#0d1117',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          borderRadius: 12,
           overflow: 'hidden',
-          boxShadow: '0 4px 14px rgba(0,0,0,0.5)'
+          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
+          marginBottom: 16
         }}
-      />
+      >
+        {/* Window Titlebar */}
+        <div
+          style={{
+            background: 'linear-gradient(180deg, #1f242c 0%, #161b22 100%)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            padding: '10px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12
+          }}
+        >
+          {/* Traffic light dots */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#ff5f56', display: 'inline-block', boxShadow: '0 0 6px rgba(255,95,86,0.4)' }} />
+            <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#ffbd2e', display: 'inline-block', boxShadow: '0 0 6px rgba(255,189,46,0.4)' }} />
+            <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#27c93f', display: 'inline-block', boxShadow: '0 0 6px rgba(39,201,63,0.4)' }} />
+          </div>
+
+          {/* Window Title */}
+          <div style={{ color: '#c9d1d9', fontSize: 12, fontFamily: 'JetBrains Mono, monospace', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <TerminalIcon size={13} color="var(--g)" />
+            <span>guardian@ubuntu:~ (bash) — 80x24</span>
+          </div>
+
+          {/* Header Action */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="badge g" style={{ fontSize: 10, padding: '2px 8px' }}>CONNECTED</span>
+            <Btn onClick={copyOutput} style={{ padding: '3px 10px', fontSize: 11, margin: 0 }}>
+              {copied ? (
+                <>
+                  <Check size={13} /> Copied
+                </>
+              ) : (
+                <>
+                  <Copy size={13} /> Copy Output
+                </>
+              )}
+            </Btn>
+          </div>
+        </div>
+
+        {/* XTerm mount target */}
+        <div
+          ref={ref}
+          style={{
+            padding: '12px 14px',
+            background: '#090d14',
+            minHeight: 340
+          }}
+        />
+      </div>
+
+      {/* Quick Launch Commands */}
+      <div className="card-3d card" style={{ marginTop: 12 }}>
+        <h4 style={{ margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <TerminalIcon size={14} color="var(--c)" /> Quick Shell Commands (Click to Execute)
+        </h4>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
+          {CMD.map(c => (
+            <Btn key={c} onClick={() => send.current(c)} style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>
+              {c}
+            </Btn>
+          ))}
+        </div>
+        <p className="dim" style={{ margin: 0, fontSize: 11 }}>
+          💡 <b>Keyboard Shortcuts:</b> Press <code>Tab</code> for command auto-completion, <code>↑</code> / <code>↓</code> arrows for bash command history.
+        </p>
+      </div>
     </div>
   )
 }

@@ -19,7 +19,9 @@ import {
   Shield,
   Search,
   AlertTriangle,
-  X
+  X,
+  Sun,
+  Moon
 } from 'lucide-react'
 import { api } from './api'
 import Alerts from './pages/Alerts'
@@ -335,6 +337,32 @@ function Main() {
           </span>
         </div>
 
+        {/* Dark / Light Mode 1-Click Toggle */}
+        <button
+          className="btn btn-sm"
+          onClick={() => setTheme(theme === 'light' ? 'ubuntu' : 'light')}
+          title="Toggle Dark / Light Mode"
+          style={{
+            marginRight: 8,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            background: theme === 'light' ? 'rgba(233,84,32,0.1)' : 'rgba(255,255,255,0.06)',
+            borderColor: theme === 'light' ? 'var(--accent)' : 'var(--line)',
+            color: theme === 'light' ? 'var(--accent)' : 'var(--fg)'
+          }}
+        >
+          {theme === 'light' ? (
+            <>
+              <Moon size={13} /> <span>Dark Mode</span>
+            </>
+          ) : (
+            <>
+              <Sun size={13} color="#f59e0b" /> <span>Light Mode</span>
+            </>
+          )}
+        </button>
+
         {/* Theme select */}
         <select
           value={theme}
@@ -352,6 +380,7 @@ function Main() {
           }}
         >
           <option value="ubuntu">Dark Horizon</option>
+          <option value="light">Light Paper</option>
           <option value="tokyo-night">Tokyo Night</option>
           <option value="nord">Nord Arctic</option>
           <option value="dracula">Dracula Core</option>

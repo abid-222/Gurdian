@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, Camera } from 'lucide-react'
+import { Search, Camera, Server } from 'lucide-react'
 import { api } from '../api'
 import { useScan } from '../hooks/useScan'
 import { Badge, Bar, Btn, Card, ErrorBox, Stat, Table } from '../components/ui'
@@ -23,6 +23,32 @@ export default function Generic({ mod, src }) {
 
   return (
     <div>
+      {/* ── 3D System Architecture Banner ── */}
+      {mod === 'system' && (
+        <div className="status-banner-3d">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <Server size={22} color="var(--c)" />
+                <h3 style={{ margin: 0, color: 'var(--fg)', fontSize: 16 }}>
+                  Operating System Core Architecture & Hardware Sentinel
+                </h3>
+                <Badge v="KERNEL AUDIT" tone="g" />
+              </div>
+              <p className="dim" style={{ fontSize: 13, margin: '4px 0 0', maxWidth: 740, lineHeight: 1.5 }}>
+                Direct low-overhead hardware telemetry extracted via kernel procfs (<code style={{ color: 'var(--c)' }}>/proc/stat</code>, <code style={{ color: 'var(--c)' }}>/proc/meminfo</code>, <code style={{ color: 'var(--c)' }}>/proc/uptime</code>).
+                Monitors system health, multi-core workload distribution, and physical memory saturation.
+              </p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="badge p" style={{ fontSize: 11, padding: '4px 10px' }}>
+                Platform: {src.toUpperCase()}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Toolbar ── */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
         <Btn onClick={run} loading={loading}>
@@ -43,10 +69,10 @@ export default function Generic({ mod, src }) {
         </div>
       ))}
 
-      {/* ── System Gauges & Hardware Cards ── */}
+      {/* ── System Gauges & Hardware Cards (Retains cpu_pct for Vitest) ── */}
       {sys && (
         <div className="grid">
-          <Card title="CPU & Memory Utilization">
+          <Card className="card-3d" title="CPU & Memory Utilization">
             <Bar label="cpu_pct" v={parseFloat(sys.cpu_pct || 0)} />
             <Bar label="ram_pct" v={parseFloat(sys.ram_pct || 0)} />
             <Bar label="disk_pct" v={parseFloat(sys.disk_pct || 0)} />
@@ -70,7 +96,7 @@ export default function Generic({ mod, src }) {
 
       {snaps && (
         <div style={{ marginTop: 16 }}>
-          <Card title="Saved snapshots (Live Monitor > Snapshot)">
+          <Card className="card-3d" title="Saved snapshots (Live Monitor > Snapshot)">
             <Table rows={snaps} />
           </Card>
         </div>

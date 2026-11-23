@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, Save, Filter } from 'lucide-react'
+import { Search, Save, Filter, Database } from 'lucide-react'
 import { api } from '../api'
 import { useScan } from '../hooks/useScan'
 import { Badge, Btn, Card, ErrorBox } from '../components/ui'
@@ -30,6 +30,30 @@ export default function Persistence({ src }) {
 
   return (
     <div>
+      {/* ── 3D Security Module Banner ── */}
+      <div className="status-banner-3d">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <Database size={22} color="var(--c)" />
+              <h3 style={{ margin: 0, color: 'var(--fg)', fontSize: 16 }}>
+                Host Persistence & Auto-Start Hook Auditor
+              </h3>
+              <Badge v="AUDITED" tone="g" />
+            </div>
+            <p className="dim" style={{ fontSize: 13, margin: '4px 0 0', maxWidth: 740, lineHeight: 1.5 }}>
+              Audits cron jobs (<code style={{ color: 'var(--c)' }}>/etc/cron*</code>), systemd services, and Windows Run registry keys.
+              Detects stealthy persistence footholds designed by malware to survive host reboots.
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="badge c" style={{ fontSize: 11, padding: '4px 10px' }}>
+              Total Hooks: {rows.length}
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* ── Toolbar ── */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
         <Btn onClick={run} loading={loading}>

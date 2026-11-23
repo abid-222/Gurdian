@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, History, Save, Info } from 'lucide-react'
+import { Search, History, Save, Info, Usb as UsbIcon } from 'lucide-react'
 import { api } from '../api'
 import { useScan } from '../hooks/useScan'
 import { Badge, Btn, Card, ErrorBox, Table } from '../components/ui'
@@ -19,6 +19,30 @@ export default function Usb({ src }) {
 
   return (
     <div>
+      {/* ── 3D Security Module Banner ── */}
+      <div className="status-banner-3d">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <UsbIcon size={22} color="var(--c)" />
+              <h3 style={{ margin: 0, color: 'var(--fg)', fontSize: 16 }}>
+                Physical Hardware Bus & USB Peripheral Sentinel
+              </h3>
+              <Badge v={data?.rows?.length > 0 ? `${data.rows.length} CONNECTED` : 'MONITORED'} tone="g" />
+            </div>
+            <p className="dim" style={{ fontSize: 13, margin: '4px 0 0', maxWidth: 740, lineHeight: 1.5 }}>
+              Audits hardware buses and Plug-and-Play device trees for unauthorized external peripherals.
+              Maintains an append-only forensic event history to protect against BadUSB, rubber ducky keystroke injectors, and data exfiltration.
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="badge c" style={{ fontSize: 11, padding: '4px 10px' }}>
+              Platform: {src.toUpperCase()}
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* ── Toolbar ── */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
         <Btn onClick={run} loading={loading}>

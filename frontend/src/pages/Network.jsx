@@ -45,6 +45,29 @@ export default function Network({ src }) {
 
   return (
     <div>
+      {/* ── 3D Security Module Banner ── */}
+      <div className="status-banner-3d">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <Radio size={22} color="var(--c)" />
+              <h3 style={{ margin: 0, color: 'var(--fg)', fontSize: 16 }}>
+                Network Port Sentinel & Socket Backdoor Auditor
+              </h3>
+              <Badge v={listen.length > 0 ? `${listen.length} LISTENING` : 'MONITORED'} tone="g" />
+            </div>
+            <p className="dim" style={{ fontSize: 13, margin: '4px 0 0', maxWidth: 740, lineHeight: 1.5 }}>
+              Audits TCP/UDP sockets and remote established connections. Flags unbaselined listening ports (<code style={{ color: 'var(--r)' }}>NEW</code> badge) and maps active traffic per binary in real time.
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="badge c" style={{ fontSize: 11, padding: '4px 10px' }}>
+              Established: {est.length}
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* ── Toolbar ── */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
         <Btn onClick={run} loading={loading}>

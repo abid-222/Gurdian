@@ -5,6 +5,7 @@ import { Badge, Btn, Card, ErrorBox } from '../components/ui'
 
 const THEMES = [
   { id: 'ubuntu', name: 'Ubuntu Aubergine', color: '#e95420' },
+  { id: 'light', name: 'Ubuntu Clean Light', color: '#0284c7' },
   { id: 'tokyo-night', name: 'Tokyo Night', color: '#7aa2f7' },
   { id: 'nord', name: 'Nord Arctic', color: '#88c0d0' },
   { id: 'dracula', name: 'Dracula Vampire', color: '#bd93f9' }
