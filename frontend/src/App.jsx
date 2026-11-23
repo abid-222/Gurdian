@@ -21,7 +21,8 @@ import {
   AlertTriangle,
   X,
   Sun,
-  Moon
+  Moon,
+  BellOff
 } from 'lucide-react'
 import { api } from './api'
 import Alerts from './pages/Alerts'
@@ -198,6 +199,22 @@ function Main() {
   )
   const [toasts, setToasts]   = useState([])
   const [hasHighAlert, setHasHighAlert] = useState(false)
+  const [notifyOn, setNotifyOn] = useState(() => {
+    try {
+      return localStorage.getItem('guardian_notify') !== 'false'
+    } catch {
+      return true
+    }
+  })
+
+  const toggleNotify = () => {
+    setNotifyOn(prev => {
+      const next = !prev
+      try { localStorage.setItem('guardian_notify', String(next)) } catch { /* ignore */ }
+      if (!next) setToasts([])
+      return next
+    })
+  }
 
   // Persist source
   const changeSrc = s => {
@@ -240,7 +257,7 @@ function Main() {
       const unack = (alerts || []).filter(a => !a.acknowledged)
       const hasHigh = unack.some(a => a.severity === 'HIGH' || a.severity === 'CRITICAL')
       setHasHighAlert(hasHigh)
-      if (unack.length > 0) {
+      if (notifyOn && unack.length > 0) {
         setToasts(prev => {
           const newAlerts = unack.filter(a => !prev.some(t => t.id === a.id))
           if (newAlerts.length > 0) {
@@ -250,7 +267,7 @@ function Main() {
         })
       }
     }).catch(() => {})
-  }, [])
+  }, [notifyOn])
 
   useEffect(() => {
     bump()
@@ -270,50 +287,52 @@ function Main() {
   return (
     <>
       {/* ── Toast notifications (Outside Grid) ── */}
-      <div className="toast-container">
-        {toasts.map(t => {
-          const tr = toastRisk(t)
-          const isSerious = (t.score ?? score) >= 70 || t.severity === 'HIGH' || t.severity === 'CRITICAL'
-          return (
-            <div key={t.id} className="toast" style={{ borderLeftColor: tr.color }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                <span style={{ color: tr.color, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {isSerious ? <AlertTriangle size={15} /> : <Bell size={15} />}
-                  <span>{t.severity || 'SECURITY'} ALERT</span>
-                </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <button
-                    className="btn btn-sm"
-                    style={{ padding: '2px 8px', fontSize: 10, margin: 0 }}
-                    onClick={() => {
-                      api(`/api/alerts/${t.id}/ack`, 'POST').then(() => {
-                        dismissToast(t.id)
-                        bump()
-                      })
-                    }}
-                  >
-                    Acknowledge
-                  </button>
-                  <button
-                    className="btn btn-sm btn-danger"
-                    style={{ padding: '0 4px', margin: 0, border: 'none', background: 'transparent' }}
-                    onClick={() => dismissToast(t.id)}
-                    aria-label="Dismiss"
-                  >
-                    <X size={14} />
-                  </button>
+      {notifyOn && (
+        <div className="toast-container">
+          {toasts.map(t => {
+            const tr = toastRisk(t)
+            const isSerious = (t.score ?? score) >= 70 || t.severity === 'HIGH' || t.severity === 'CRITICAL'
+            return (
+              <div key={t.id} className="toast" style={{ borderLeftColor: tr.color }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <span style={{ color: tr.color, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {isSerious ? <AlertTriangle size={15} /> : <Bell size={15} />}
+                    <span>{t.severity || 'SECURITY'} ALERT</span>
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <button
+                      className="btn btn-sm"
+                      style={{ padding: '2px 8px', fontSize: 10, margin: 0 }}
+                      onClick={() => {
+                        api(`/api/alerts/${t.id}/ack`, 'POST').then(() => {
+                          dismissToast(t.id)
+                          bump()
+                        })
+                      }}
+                    >
+                      Acknowledge
+                    </button>
+                    <button
+                      className="btn btn-sm btn-danger"
+                      style={{ padding: '0 4px', margin: 0, border: 'none', background: 'transparent' }}
+                      onClick={() => dismissToast(t.id)}
+                      aria-label="Dismiss"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--fg)', fontWeight: 500 }}>
+                  {t.message}
+                </div>
+                <div style={{ marginTop: 4, fontSize: 10, color: 'var(--dim)' }}>
+                  Module: [{t.module}] · Source: {t.source}
                 </div>
               </div>
-              <div style={{ fontSize: 12, color: 'var(--fg)', fontWeight: 500 }}>
-                {t.message}
-              </div>
-              <div style={{ marginTop: 4, fontSize: 10, color: 'var(--dim)' }}>
-                Module: [{t.module}] · Source: {t.source}
-              </div>
-            </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* ── Command palette (Outside Grid) ── */}
       {pal && (
@@ -379,6 +398,32 @@ function Main() {
               Risk: {score} · {risk.label}
             </span>
           </div>
+
+          {/* Notification ON/OFF Control Button */}
+          <button
+            className="btn btn-sm"
+            onClick={toggleNotify}
+            title={notifyOn ? 'Mute pop-up notifications' : 'Enable pop-up notifications'}
+            style={{
+              marginRight: 8,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: notifyOn ? 'rgba(16,185,129,0.1)' : 'rgba(244,63,94,0.1)',
+              borderColor: notifyOn ? 'rgba(16,185,129,0.35)' : 'rgba(244,63,94,0.35)',
+              color: notifyOn ? 'var(--g)' : 'var(--r)'
+            }}
+          >
+            {notifyOn ? (
+              <>
+                <Bell size={13} /> <span>Alerts ON</span>
+              </>
+            ) : (
+              <>
+                <BellOff size={13} /> <span>Alerts OFF</span>
+              </>
+            )}
+          </button>
 
           {/* Dark / Light Mode 1-Click Toggle */}
           <button
