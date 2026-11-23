@@ -12,7 +12,19 @@ const CMD = [
   'guardian ports',
   'guardian alerts',
   'guardian score',
-  'guardian timeline'
+  'guardian timeline',
+  'whoami',
+  'pwd',
+  'ls',
+  'uptime',
+  'date',
+  'ps',
+  'top',
+  'netstat',
+  'df',
+  'free',
+  'ipconfig',
+  'clear'
 ]
 
 export default function Terminal() {
@@ -51,6 +63,12 @@ export default function Terminal() {
       fullLog.current.push('\n[disconnected]\n')
     }
     ws.onmessage = e => {
+      if (e.data && e.data.includes('\x1b[2J')) {
+        t.clear()
+        t.write(P)
+        fullLog.current = [P]
+        return
+      }
       const formatted = e.data.replace(/\n/g, '\r\n') + (e.data ? '\r\n' : '') + P
       t.write(formatted)
       fullLog.current.push(e.data + '\n' + P)
