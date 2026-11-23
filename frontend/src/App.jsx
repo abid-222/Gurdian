@@ -537,7 +537,7 @@ function Main() {
 
         {/* ── Main content ── */}
         <main className="main">
-          <V src={src} bump={bump} theme={theme} setTheme={setTheme} />
+          <V mod={page} page={page} src={src} bump={bump} theme={theme} setTheme={setTheme} />
         </main>
       </div>
     </>
