@@ -114,7 +114,7 @@ def term_cmd(raw_cmd):
             f"Memory (RAM)   : {format_bytes(vm.used)} / {format_bytes(vm.total)} ({vm.percent}% used)",
             f"Disk Storage   : {format_bytes(disk.used)} / {format_bytes(disk.total)} ({disk.percent}% used)",
             f"Risk Score     : {s} / 100 ({'SAFE' if s < 30 else 'ELEVATED' if s < 70 else 'CRITICAL'})",
-            f"Defense Daemon : Online (FastAPI + SQLite Engine)"
+            "Defense Daemon : Online (FastAPI + SQLite Engine)"
         ])
 
     # 4. Top processes (preserves exact test contract headers)
