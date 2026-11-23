@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Search, History, Save, Info, Usb as UsbIcon } from 'lucide-react'
-import { api } from '../api'
+import { api, saveBaseline } from '../api'
 import { useScan } from '../hooks/useScan'
 import { Badge, Btn, Card, ErrorBox, Table } from '../components/ui'
 
@@ -63,11 +63,7 @@ export default function Usb({ src }) {
         </Btn>
         <Btn
           onClick={guard(async () => {
-            await Promise.all(
-              (src === 'both' ? ['linux', 'windows'] : [src]).map(s =>
-                api(`/api/baseline/usb?source=${s}`, 'POST')
-              )
-            )
+            await saveBaseline('usb', src)
             run()
           })}
         >

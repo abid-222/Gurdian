@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Search, Save, Filter, Database } from 'lucide-react'
-import { api } from '../api'
+import { saveBaseline } from '../api'
 import { useScan } from '../hooks/useScan'
 import { Badge, Btn, Card, ErrorBox } from '../components/ui'
 
@@ -17,11 +17,7 @@ export default function Persistence({ src }) {
 
   const save = async () => {
     try {
-      await Promise.all(
-        (src === 'both' ? ['linux', 'windows'] : [src]).map(s =>
-          api(`/api/baseline/persistence?source=${s}`, 'POST')
-        )
-      )
+      await saveBaseline('persistence', src)
       run()
     } catch (e) {
       setErr(e.message)

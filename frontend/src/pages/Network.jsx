@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Search, Save, Activity, Radio, Download } from 'lucide-react'
-import { api, toCsv } from '../api'
+import { saveBaseline, toCsv } from '../api'
 import { useScan } from '../hooks/useScan'
 import Radar from '../components/Radar'
 import { Badge, Btn, Card, ErrorBox, Table } from '../components/ui'
@@ -30,12 +30,8 @@ export default function Network({ src }) {
   const save = async () => {
     setBusy(true)
     try {
-      const r = await Promise.all(
-        (src === 'both' ? ['linux', 'windows'] : [src]).map(s =>
-          api(`/api/baseline/network?source=${s}`, 'POST')
-        )
-      )
-      setMsg(`Baseline saved (${r.reduce((a, x) => a + x.saved, 0)} ports)`)
+      const r = await saveBaseline('network', src)
+      setMsg(`Baseline saved (${r.reduce((a, x) => a + (x.saved || 0), 0)} ports)`)
       run()
     } catch (e) {
       setErr(e.message)

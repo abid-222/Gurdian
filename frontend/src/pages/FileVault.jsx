@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { FileCheck2, Save, Hash, Download, Plus } from 'lucide-react'
-import { api, toCsv } from '../api'
+import { api, saveBaseline, toCsv } from '../api'
 import { useScan } from '../hooks/useScan'
 import { Badge, Btn, Card, ErrorBox, Table } from '../components/ui'
 
@@ -66,12 +66,7 @@ export default function FileVault({ src }) {
         <Btn
           onClick={() =>
             act(
-              () =>
-                Promise.all(
-                  (src === 'both' ? ['linux', 'windows'] : [src]).map(s =>
-                    api(`/api/baseline/integrity?source=${s}`, 'POST')
-                  )
-                ),
+              () => saveBaseline('integrity', src),
               'Baseline saved'
             )
           }

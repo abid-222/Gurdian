@@ -58,7 +58,8 @@ const GradientChart = ({ data, lines, unit, id }) => (
 
 export default function Live({ src }) {
   const isBoth = src === 'both'
-  const primarySrc = src === 'windows' ? 'windows' : 'linux'
+  const isWin = typeof navigator !== 'undefined' && /win/i.test(navigator.userAgent || navigator.platform || '')
+  const primarySrc = src === 'windows' ? 'windows' : (src === 'both' ? (isWin ? 'windows' : 'linux') : 'linux')
 
   const [active, setActive] = useState(true)
   const [rng, setRng] = useState(60)
@@ -77,17 +78,25 @@ export default function Live({ src }) {
   useEffect(() => {
     if (!active) return
     let on = true
-    const tick = () =>
-      api(`/api/scan/process?source=${primarySrc}`, 'POST')
-        .then(r => on && setProcs(r.rows || []))
+    const tick = () => {
+      const sources = src === 'both' ? (isWin ? ['windows', 'linux'] : ['linux', 'windows']) : [primarySrc]
+      Promise.allSettled(sources.map(s => api(`/api/scan/process?source=${s}`, 'POST')))
+        .then(results => {
+          if (!on) return
+          const withRows = results.find(r => r.status === 'fulfilled' && r.value?.rows?.length > 0)
+          if (withRows) {
+            setProcs(withRows.value.rows)
+          }
+        })
         .catch(() => {})
+    }
     tick()
     const i = setInterval(tick, 4000)
     return () => {
       on = false
       clearInterval(i)
     }
-  }, [active, primarySrc])
+  }, [active, primarySrc, src, isWin])
 
   const snap = async () => {
     try {

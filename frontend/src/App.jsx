@@ -185,9 +185,9 @@ function Main() {
   const [page, setPage]       = useState(getHashPage)
   const [src, setSrc]         = useState(() => {
     try {
-      return localStorage.getItem('guardian_src') || 'windows'
+      return localStorage.getItem('guardian_src') || 'both'
     } catch {
-      return 'windows'
+      return 'both'
     }
   })
   const [pal, setPal]         = useState(false)
@@ -221,16 +221,6 @@ function Main() {
     setSrc(s)
     try { localStorage.setItem('guardian_src', s) } catch { /* ignore */ }
   }
-
-  // Detect host platform on mount
-  useEffect(() => {
-    api('/api/info').then(inf => {
-      const isWin = inf?.os?.toLowerCase().includes('windows')
-      if (isWin && !localStorage.getItem('guardian_src')) {
-        setSrc('windows')
-      }
-    }).catch(() => {})
-  }, [])
 
   // Sync theme to <html>
   useEffect(() => {
@@ -477,14 +467,23 @@ function Main() {
           {/* Source selector */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(0,0,0,0.25)', padding: '2px 4px', borderRadius: 8, border: '1px solid var(--line)' }}>
             <span className="dim" style={{ fontSize: 10, textTransform: 'uppercase', padding: '0 4px', fontWeight: 600 }}>Source:</span>
-            {['linux', 'windows', 'both'].map(s => (
+            {['both', 'windows', 'linux'].map(s => (
               <button
                 key={s}
                 className={`btn btn-sm ${s === src ? 'on' : ''}`}
-                style={{ margin: 0, padding: '3px 8px', fontSize: 11, textTransform: 'uppercase' }}
+                style={{
+                  margin: 0,
+                  padding: '3px 8px',
+                  fontSize: 11,
+                  textTransform: 'uppercase',
+                  fontWeight: s === src ? 700 : 500,
+                  background: s === src && s === 'both' ? 'linear-gradient(135deg, rgba(99,102,241,0.25) 0%, rgba(56,189,248,0.25) 100%)' : undefined,
+                  borderColor: s === src && s === 'both' ? 'var(--accent)' : undefined
+                }}
                 onClick={() => changeSrc(s)}
+                title={s === 'both' ? 'Unified Hybrid Defense (Monitors Windows and Linux simultaneously)' : `${s.toUpperCase()} single platform filter`}
               >
-                {s}
+                {s === 'both' ? 'Unified Both' : s}
               </button>
             ))}
           </div>
