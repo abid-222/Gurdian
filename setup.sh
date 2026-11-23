@@ -3,6 +3,6 @@
 set -e
 cd "$(dirname "$0")" || exit 1
 chmod +x bash/*/*.sh start.sh
-python3 -m venv .venv && . .venv/bin/activate && pip install -r backend/requirements.txt
+python3 -m venv .venv && . .venv/bin/activate && pip install -r backend/requirements.txt pytest ruff
 (cd frontend && npm install)
 echo "Setup done. Run ./start.sh"
