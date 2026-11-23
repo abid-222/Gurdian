@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Loader2, Info } from 'lucide-react'
+import { Loader2, Info, Inbox } from 'lucide-react'
 import { LIMITED } from '../hooks/useScan'
 
 // ─── TONE MAP ─────────────────────────────────────────────────────────────────
@@ -256,7 +256,7 @@ export function LoadingSkeleton({ rows = 5, cols = 4 }) {
 }
 
 // ─── EMPTY STATE ──────────────────────────────────────────────────────────────
-export function EmptyState({ icon = '📭', title, message, action, onAction }) {
+export function EmptyState({ icon, title, message, action, onAction }) {
   return (
     <div
       style={{
@@ -269,7 +269,7 @@ export function EmptyState({ icon = '📭', title, message, action, onAction }) 
         gap: '12px',
       }}
     >
-      <div style={{ fontSize: '40px', lineHeight: 1 }}>{icon}</div>
+      <div style={{ lineHeight: 1 }}>{icon || <Inbox size={36} color="var(--dim)" />}</div>
       {title && (
         <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary, #222)' }}>{title}</div>
       )}
@@ -381,7 +381,7 @@ export function Table({ rows, cols, onRow, sel, pageSize = 20 }) {
       {/* rows is [] (loaded but empty) → empty state */}
       {rows.length === 0 ? (
         <EmptyState
-          icon="📭"
+          icon={<Inbox size={36} color="var(--dim)" />}
           title="No data"
           message="Nothing to display here yet."
         />

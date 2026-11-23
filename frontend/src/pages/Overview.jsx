@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { Search, RefreshCw, FileText, Code2 } from 'lucide-react'
+import { Search, RefreshCw, FileText, Code2, AlertTriangle } from 'lucide-react'
 import { api } from '../api'
 import { useLive } from '../hooks/useLive'
 import { Badge, Btn, Card, Gauge } from '../components/ui'
@@ -101,7 +101,11 @@ export default function Overview({ src, bump }) {
 
   return (
     <div>
-      {err && <p className="err">✖ {err}</p>}
+      {err && (
+        <p className="err" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <AlertTriangle size={14} /> {err}
+        </p>
+      )}
 
       {/* ── Service health row ─────────────────────────────────────────── */}
       <Card style={{ marginBottom: 12 }}>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Terminal as XTerm } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
+import { Copy, Check } from 'lucide-react'
 import { Btn } from '../components/ui'
 
 const CMD = [
@@ -112,7 +113,15 @@ export default function Terminal() {
           <Btn key={c} onClick={() => send.current(c)}>{c}</Btn>
         ))}
         <Btn onClick={copyOutput} style={{ marginLeft: 'auto' }}>
-          {copied ? '✓ Copied' : '📋 Copy Output'}
+          {copied ? (
+            <>
+              <Check size={14} /> Copied
+            </>
+          ) : (
+            <>
+              <Copy size={14} /> Copy Output
+            </>
+          )}
         </Btn>
       </div>
       <p className="dim" style={{ margin: '0 0 10px' }}>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Play, Pause, Camera } from 'lucide-react'
 import { api } from '../api'
 import { useLive } from '../hooks/useLive'
 import { Bar, Btn, Card, ErrorBox } from '../components/ui'
@@ -61,14 +62,20 @@ export default function Live({ src }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
-        <Btn on={active} onClick={() => setActive(true)}>Start Live</Btn>
-        <Btn on={!active} onClick={() => setActive(false)}>Pause</Btn>
-        <Btn onClick={snap} disabled={!last}>Snapshot</Btn>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
+        <Btn on={active} onClick={() => setActive(true)}>
+          <Play size={14} /> Start Live
+        </Btn>
+        <Btn on={!active} onClick={() => setActive(false)}>
+          <Pause size={14} /> Pause
+        </Btn>
+        <Btn onClick={snap} disabled={!last}>
+          <Camera size={14} /> Snapshot
+        </Btn>
         {[[60, '1 min'], [300, '5 min'], [900, '15 min']].map(([v, l]) => (
           <Btn key={v} on={rng === v} onClick={() => setRng(v)}>{l}</Btn>
         ))}
-        <span className="dim">
+        <span className="dim" style={{ marginLeft: 'auto', fontSize: 12 }}>
           mode: {src} · {status} {msg && `(${msg})`}
         </span>
       </div>
@@ -78,7 +85,7 @@ export default function Live({ src }) {
       {/* When Both is active: Show dual live telemetry cards! */}
       {isBoth ? (
         <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
-          <Card title="🐧 Linux / WSL2 Live">
+          <Card title="Linux / WSL2 Live Telemetry">
             {last ? (
               <>
                 <Bar label="cpu" v={last.cpu} />
@@ -88,7 +95,7 @@ export default function Live({ src }) {
               </>
             ) : <span className="dim">Waiting for Linux live data...</span>}
           </Card>
-          <Card title="🪟 Windows Bridge Live">
+          <Card title="Windows Bridge Live Telemetry">
             {winLive.last ? (
               <>
                 <Bar label="cpu" v={winLive.last.cpu} />

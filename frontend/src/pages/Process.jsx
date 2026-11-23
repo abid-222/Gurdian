@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Cpu, Info } from 'lucide-react'
+import { Cpu, Info, AlertTriangle } from 'lucide-react'
 import { saveBaseline, toCsv } from '../api'
 import { useScan } from '../hooks/useScan'
 import { Badge, Btn, Card } from '../components/ui'
@@ -194,7 +194,9 @@ export default function Process({ src }) {
 
       {/* Other errors */}
       {otherErrors.map((e, i) => e && (
-        <p key={i} className="err">✖ {e}</p>
+        <p key={i} className="err" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <AlertTriangle size={14} /> {e}
+        </p>
       ))}
 
       {limited && <p className="dim">Showing partial data (limited mode).</p>}

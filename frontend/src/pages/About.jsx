@@ -1,3 +1,4 @@
+import { GraduationCap, Users, ClipboardCheck, ShieldCheck } from 'lucide-react'
 import { Badge, Card } from '../components/ui'
 
 const TEAM = [
@@ -42,8 +43,10 @@ export default function About() {
   return (
     <div>
       {/* Project Overview Card */}
-      <Card title="🎓 University Project Defense & Team Portfolio">
-        <h3 style={{ margin: '0 0 6px', color: 'var(--c)' }}>Smart OS Guardian (v6.0 Enterprise)</h3>
+      <Card title={<span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><GraduationCap size={16} color="var(--c)" /> University Project Defense & Team Portfolio</span>}>
+        <h3 style={{ margin: '0 0 6px', color: 'var(--c)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <ShieldCheck size={20} color="var(--c)" /> Smart OS Guardian (v6.0 Enterprise)
+        </h3>
         <p className="dim" style={{ fontSize: 13, lineHeight: 1.6 }}>
           A Next-Generation Real-Time Host Intrusion Detection System (HIDS) and Multi-Platform Security Dashboard designed for
           high-performance host auditing across native Linux (WSL2) and Windows operating systems.
@@ -58,7 +61,9 @@ export default function About() {
       </Card>
 
       {/* Team Members Grid */}
-      <h3 style={{ margin: '18px 0 10px', color: 'var(--fg)', fontSize: 15 }}>👥 Team Members & Module Ownership</h3>
+      <h3 style={{ margin: '18px 0 10px', color: 'var(--fg)', fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Users size={18} color="var(--c)" /> Team Members & Module Ownership
+      </h3>
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
         {TEAM.map((m, idx) => (
           <Card key={idx}>
@@ -85,7 +90,7 @@ export default function About() {
       </div>
 
       {/* Defense Checklist for Examiners */}
-      <Card title="📋 Key Viva / Examiner Defense Highlights">
+      <Card title={<span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><ClipboardCheck size={16} color="var(--c)" /> Key Viva / Examiner Defense Highlights</span>}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12, fontSize: 12 }}>
           <div>
             <b style={{ color: 'var(--c)' }}>1. Strict Real-Data Guarantee:</b>

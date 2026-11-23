@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Palette, Clock, ShieldCheck, Lock, Check, Plus } from 'lucide-react'
 import { api } from '../api'
 import { Badge, Btn, Card, ErrorBox } from '../components/ui'
 
@@ -50,11 +51,15 @@ export default function Settings({ theme, setTheme }) {
   return (
     <div>
       <ErrorBox error={err} />
-      {msg && <p style={{ color: 'var(--g)', fontWeight: 600 }}>✓ {msg}</p>}
+      {msg && (
+        <p style={{ color: 'var(--g)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Check size={16} /> {msg}
+        </p>
+      )}
 
       <div className="grid">
         {/* Theme Settings */}
-        <Card title="🎨 Dashboard Theme Switcher">
+        <Card title={<span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Palette size={16} color="var(--c)" /> Dashboard Theme Switcher</span>}>
           <p className="dim">Select your preferred desktop cyberpunk/terminal theme:</p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
             {THEMES.map(t => (
@@ -72,7 +77,7 @@ export default function Settings({ theme, setTheme }) {
         </Card>
 
         {/* Refresh Interval Settings */}
-        <Card title="⏱️ Global Telemetry & Refresh Rate">
+        <Card title={<span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Clock size={16} color="var(--c)" /> Global Telemetry & Refresh Rate</span>}>
           <p className="dim">Polling and live streaming update interval:</p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
             {['1s', '3s', '5s', '10s', 'manual'].map(iv => (
@@ -85,7 +90,7 @@ export default function Settings({ theme, setTheme }) {
       </div>
 
       {/* File Vault Watchlist Management */}
-      <Card title="🛡️ File Vault Watchlist Management">
+      <Card title={<span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><ShieldCheck size={16} color="var(--c)" /> File Vault Watchlist Management</span>}>
         <p className="dim">
           Add an absolute critical system file path to monitor for unauthorized modifications. SHA-256 hashes are recalculated on every scan.
         </p>
@@ -97,8 +102,8 @@ export default function Settings({ theme, setTheme }) {
             value={newPath}
             onChange={e => setNewPath(e.target.value)}
           />
-          <Btn type="submit" loading={loading} disabled={!newPath.trim()}>
-            + Add to Watchlist
+          <Btn type="submit" loading={loading} disabled={!newPath.trim()} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <Plus size={14} /> Add to Watchlist
           </Btn>
         </form>
 
@@ -111,7 +116,7 @@ export default function Settings({ theme, setTheme }) {
       </Card>
 
       {/* System Security Environment */}
-      <Card title="🔒 Security Architecture Policy">
+      <Card title={<span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Lock size={16} color="var(--c)" /> Security Architecture Policy</span>}>
         <div className="dim" style={{ lineHeight: 1.6 }}>
           <div>• <b>Zero Mock Mode</b>: Strictly real kernel metrics via /proc/stat, /proc/net/dev, and Windows PowerShell WMI.</div>
           <div>• <b>Read-Only Collectors</b>: No collectors execute destructive commands or modify host state.</div>

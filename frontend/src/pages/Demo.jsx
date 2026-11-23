@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { FlaskConical, RotateCcw, Play, Search, MessageSquare, CheckCircle2 } from 'lucide-react'
 import { api } from '../api'
 import { Badge, Btn, Card, ErrorBox } from '../components/ui'
 
@@ -99,7 +100,7 @@ export default function Demo({ src }) {
     setScanResult(null)
     try {
       const r = await api(`/api/demo/${actionId}?source=${s}`, 'POST')
-      setOut(`${actionId}: ${r.ok ? '✓ executed successfully' : '✖ failed'} ${r.output || ''}`)
+      setOut(`${actionId}: ${r.ok ? 'Executed successfully' : 'Failed'} ${r.output || ''}`)
     } catch (e) {
       setErr(e.message)
     }
@@ -121,7 +122,7 @@ export default function Demo({ src }) {
   return (
     <div>
       {/* Supervisor Presentation Banner */}
-      <Card title="🎓 Supervisor Demonstration & Defense Lab Mode">
+      <Card title={<span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><FlaskConical size={16} color="var(--c)" /> Supervisor Demonstration & Defense Lab Mode</span>}>
         <h3 style={{ margin: '0 0 6px', color: 'var(--c)' }}>
           Live Host Threat Simulation & Proof of Real-Time Detection
         </h3>
@@ -135,8 +136,19 @@ export default function Demo({ src }) {
 
       <ErrorBox error={err} />
       {out && (
-        <div style={{ background: 'rgba(56,180,74,0.1)', border: '1px solid var(--g)', padding: '8px 12px', borderRadius: 4, marginBottom: 12, fontSize: 12 }}>
-          <b>Lab Action Output:</b> {out}
+        <div style={{
+          background: 'rgba(56,180,74,0.1)',
+          border: '1px solid var(--g)',
+          padding: '8px 12px',
+          borderRadius: 6,
+          marginBottom: 12,
+          fontSize: 12,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8
+        }}>
+          <CheckCircle2 size={15} color="var(--g)" />
+          <span><b>Lab Action Output:</b> {out}</span>
         </div>
       )}
 
@@ -160,16 +172,25 @@ export default function Demo({ src }) {
                 loading={busy === item.id}
                 onClick={() => runAction(item.id)}
                 className={item.id === 'reset' ? 'btn-danger' : ''}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
               >
-                {item.id === 'reset' ? '🧹 Reset Lab' : `▶ Trigger ${item.id}`}
+                {item.id === 'reset' ? (
+                  <>
+                    <RotateCcw size={13} /> Reset Lab
+                  </>
+                ) : (
+                  <>
+                    <Play size={13} /> Trigger {item.id}
+                  </>
+                )}
               </Btn>
               {item.verifyMod && (
                 <Btn
                   onClick={() => verifyNow(item.verifyMod)}
                   loading={scanning}
-                  style={{ borderColor: 'var(--c)', color: 'var(--c)' }}
+                  style={{ borderColor: 'var(--c)', color: 'var(--c)', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                 >
-                  🔍 Verify {item.verifyMod}
+                  <Search size={13} /> Verify {item.verifyMod}
                 </Btn>
               )}
             </div>
@@ -184,7 +205,7 @@ export default function Demo({ src }) {
             Scanned <b>{scanResult.count}</b> host items. Detected <b>{scanResult.alerts.length}</b> threat alert(s):
           </div>
           {scanResult.alerts.map((a, i) => (
-            <div key={i} style={{ padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <div key={i} style={{ padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 6 }}>
               <Badge v={a.severity} /> <b>{a.rule}</b>: {a.message} (+{a.points} pts)
             </div>
           ))}
@@ -195,7 +216,7 @@ export default function Demo({ src }) {
       )}
 
       {/* Supervisor Presentation Talk Track (Cheatsheet) */}
-      <Card title="🗣️ Step-by-Step Viva Presentation Script (Supervisor-কে যেভাবে বোঝাবেন)">
+      <Card title={<span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><MessageSquare size={16} color="var(--c)" /> Step-by-Step Viva Presentation Script (Supervisor-কে যেভাবে বোঝাবেন)</span>}>
         <div style={{ fontSize: 12, lineHeight: 1.7 }}>
           <div style={{ marginBottom: 10 }}>
             <b style={{ color: 'var(--g)' }}>ধাপ ১: ড্যাশবোর্ডের বেসলাইন স্ট্যাটাস দেখান</b>
