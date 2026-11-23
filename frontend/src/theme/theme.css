@@ -219,8 +219,8 @@ code, kbd, pre, .mono {
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 0 20px;
+  gap: 12px;
+  padding: 0 16px;
   background: rgba(13, 18, 29, 0.95);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -229,6 +229,13 @@ code, kbd, pre, .mono {
   z-index: 10;
   height: 56px;
   width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.top::-webkit-scrollbar {
+  display: none;
 }
 
 .top-brand, .header-brand {

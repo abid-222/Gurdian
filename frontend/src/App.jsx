@@ -396,21 +396,33 @@ function Main() {
             title={notifyOn ? 'Mute pop-up notifications' : 'Enable pop-up notifications'}
             style={{
               marginRight: 8,
+              flexShrink: 0,
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 6,
-              background: notifyOn ? 'rgba(16,185,129,0.1)' : 'rgba(244,63,94,0.1)',
-              borderColor: notifyOn ? 'rgba(16,185,129,0.35)' : 'rgba(244,63,94,0.35)',
-              color: notifyOn ? 'var(--g)' : 'var(--r)'
+              gap: 7,
+              background: notifyOn
+                ? 'linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(5,150,105,0.25) 100%)'
+                : 'linear-gradient(135deg, rgba(239,68,68,0.2) 0%, rgba(185,28,28,0.25) 100%)',
+              border: `1.5px solid ${notifyOn ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)'}`,
+              color: notifyOn ? '#34d399' : '#f87171',
+              fontWeight: 700,
+              padding: '4px 11px',
+              borderRadius: 20,
+              boxShadow: notifyOn ? '0 0 12px rgba(16,185,129,0.3)' : '0 0 12px rgba(239,68,68,0.3)',
+              cursor: 'pointer'
             }}
           >
             {notifyOn ? (
               <>
-                <Bell size={13} /> <span>Alerts ON</span>
+                <Bell size={14} color="#34d399" />
+                <span style={{ fontSize: 11, fontWeight: 700 }}>Alerts ON</span>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#34d399', display: 'inline-block', boxShadow: '0 0 8px #34d399' }} />
               </>
             ) : (
               <>
-                <BellOff size={13} /> <span>Alerts OFF</span>
+                <BellOff size={14} color="#f87171" />
+                <span style={{ fontSize: 11, fontWeight: 700 }}>Alerts OFF</span>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f87171', display: 'inline-block' }} />
               </>
             )}
           </button>
