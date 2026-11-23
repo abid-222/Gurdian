@@ -15,6 +15,9 @@ import Process from '../../frontend/src/pages/Process'
 import Reports from '../../frontend/src/pages/Reports'
 import Timeline from '../../frontend/src/pages/Timeline'
 import Usb from '../../frontend/src/pages/Usb'
+import Settings from '../../frontend/src/pages/Settings'
+import About from '../../frontend/src/pages/About'
+
 globalThis.ResizeObserver ||= class { observe() {} unobserve() {} disconnect() {} }   // jsdom has none (Recharts needs it)
 beforeEach(() => installFakes())
 afterEach(cleanup)
@@ -54,4 +57,23 @@ test('live: top processes card and the server error message', async () => {
 test('app code ships no fake data: no mock mode left', async () => {
   const fs = await import('node:fs'), path = await import('node:path'), at = f => path.resolve(process.cwd(), f)   // vitest runs inside frontend/
   expect(fs.readFileSync(at('src/api.js'), 'utf8')).not.toMatch(/mock/i); expect(fs.existsSync(at('src/mock.js'))).toBe(false)
+})
+
+test('settings: theme switcher and watchlist management', async () => {
+  render(<Settings theme="ubuntu" setTheme={() => {}} />)
+  await seen('Dashboard Theme Switcher')
+  await seen('Ubuntu Aubergine')
+  await seen('Tokyo Night')
+  await seen('File Vault Watchlist Management')
+  await seen('/etc/passwd')
+})
+
+test('about: 5 team members, roles, and defense highlights', async () => {
+  render(<About />)
+  await seen('Md. Abid Hossain')
+  await seen('Tanvir Ahmed')
+  await seen('Mahmudul Hasan')
+  await seen('Sadia Rahman')
+  await seen('Nafis Fuad')
+  await seen('Key Viva / Examiner Defense Highlights')
 })

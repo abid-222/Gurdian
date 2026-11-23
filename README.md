@@ -29,7 +29,10 @@ Unlike traditional mock-up security panels, **Smart OS Guardian operates strictl
 
 ## 🚀 Key Features
 
-- ⚡ **Real-Time Live Telemetry (WebSockets)**: Continuous sub-second CPU, multi-core utilization, RAM consumption, and network RX/TX bandwidth throughput.
+- 🎨 **Multi-Theme Cyberpunk Engine**: Switch dynamically between **Ubuntu Aubergine**, **Tokyo Night**, **Nord Arctic**, and **Dracula Vampire** with instant live preview.
+- ⚡ **Real-Time Live Telemetry (WebSockets)**: Continuous sub-second CPU, multi-core utilization, RAM consumption, and network RX/TX bandwidth throughput. Supports **Both Mode** showing Linux & Windows metrics side-by-side.
+- 🧭 **Real Port Geometry Radar**: Sockets mapped by port range (Inner: <1024 system ports, Mid: registered, Outer: dynamic) and protocol angle.
+- 🛡️ **Dynamic Service Health Auditing**: Real-time `/api/health` monitoring with latency diagnostics.
 - 🔍 **Process & Binary Inspection**: Real-time process tree analysis, CPU/RAM usage tracking, detection of deleted binaries running in memory, and execution out of `/tmp` or temp directories.
 - 🌐 **Network Socket Auditing**: Active listening ports, established remote connections, and baseline comparison alerting on newly opened backdoors or unusual public IPs.
 - 🔑 **Authentication & Privilege Tracking**:
@@ -38,7 +41,12 @@ Unlike traditional mock-up security panels, **Smart OS Guardian operates strictl
 - 📂 **Cryptographic File Vault**: Monitors critical configuration files (`/etc/passwd`, `/etc/sudoers`, hosts, SSH authorized keys, PowerShell profiles) using SHA-256 baseline hashing.
 - 🔌 **Hardware & USB Bus Monitor**: Real-time detection of inserted USB flash drives, HID bad-USB devices, and peripheral hardware changes.
 - 🧠 **Smart Risk Engine**: 19 rule-based behavioral threat analyzers calculating real-time host vulnerability scores (`SAFE`, `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`).
-- 💻 **Sandboxed Command Terminal**: Built-in xterm.js terminal with tab auto-completion, command history, and a strict whitelist allowing only safe diagnostic commands.
+- 🔔 **Live Alert Push & MITRE ATT&CK Drawer**: Real-time alert polling, toast notifications for HIGH threats, status bar threat flash, and clickable MITRE ATT&CK technique references.
+- 📋 **Table Usability & Filtering**: Client-side full-text search, multi-column sorting, and pagination across all modules.
+- 💻 **Sandboxed Command Terminal**: Built-in xterm.js terminal with tab auto-completion, command history, output clipboard copy, and whitelisted commands (`guardian status`, `guardian procs`, `guardian top`, `guardian timeline`, etc.).
+- ⚙️ **Settings & Custom Watchlist**: Manage theme, refresh intervals, and add custom filesystem paths to the File Vault directly from the UI.
+- 👥 **Team Presentation / Viva Defense Page**: Interactive team portfolio featuring member roles, module ownership, and defense talking points.
+- ✈️ **100% Offline-Ready**: Bundles `@fontsource/jetbrains-mono` locally without external Google Fonts dependencies.
 - 📊 **Multi-Format Security Reports**: One-click instant reports exported in **HTML**, **plain text**, or structured **JSON**.
 
 ---

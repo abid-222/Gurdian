@@ -33,3 +33,11 @@ test('arrow-up recalls the last command', () => {
 test('closed socket: quick button does nothing', () => {
   render(<Terminal />); h.ws.readyState = 3; fireEvent.click(screen.getByText('help')); expect(h.ws.sent).toEqual([])
 })
+test('new commands guardian top and guardian timeline are available', () => {
+  render(<Terminal />)
+  fireEvent.click(screen.getByText('guardian top'))
+  expect(h.ws.sent).toEqual(['guardian top'])
+  fireEvent.click(screen.getByText('guardian timeline'))
+  expect(h.ws.sent).toEqual(['guardian top', 'guardian timeline'])
+  expect(screen.getByText(/Copy Output/i)).toBeTruthy()
+})
