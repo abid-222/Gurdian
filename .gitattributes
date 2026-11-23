@@ -1,0 +1,28 @@
+# Enforce LF endings across all platforms to prevent CRLF bash execution failures
+* text=auto eol=lf
+
+# Explicit bash and script files
+*.sh text eol=lf
+*.bash text eol=lf
+*.py text eol=lf
+
+# Frontend web assets
+*.js text eol=lf
+*.jsx text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.json text eol=lf
+*.svg text eol=lf
+*.md text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.db binary

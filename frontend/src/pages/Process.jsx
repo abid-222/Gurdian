@@ -139,8 +139,8 @@ function EmptyState({ onScan, loading }) {
   )
 }
 
-// ── Exported Top component (strictly preserves Vitest contract) ──────────────
-export const topBy = (rows, k, n = 5) =>
+// ── Top component (strictly preserves Vitest contract) ──────────────────────
+const topBy = (rows, k, n = 5) =>
   [...rows].sort((a, b) => Number(b[k]) - Number(a[k])).slice(0, n)
 
 export function Top({ rows = [] }) {

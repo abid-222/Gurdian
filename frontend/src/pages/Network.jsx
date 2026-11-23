@@ -5,7 +5,7 @@ import { useScan } from '../hooks/useScan'
 import Radar from '../components/Radar'
 import { Badge, Btn, Card, ErrorBox, Table } from '../components/ui'
 
-export const perProcess = rows =>
+const perProcess = rows =>
   Object.values(
     rows.reduce((m, r) => {
       const k = r.source + (r.process || '-')
