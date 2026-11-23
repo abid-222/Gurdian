@@ -24,7 +24,7 @@ api = APIRouter(dependencies=[Depends(auth_http)])
 @app.get("/api/health")
 def health(): return {"ok": True, "sources": list(FOLDER)}
 
-@api.post("/api/scan/{module}")
+@api.api_route("/api/scan/{module}", methods=["GET", "POST"])
 def scan(module: str, source: str = "linux"):
     if module not in COLS or source not in FOLDER: raise HTTPException(404)   # fixed lists only
     return scan_one(module, source)

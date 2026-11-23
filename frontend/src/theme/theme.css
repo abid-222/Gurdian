@@ -194,6 +194,9 @@ code, kbd, pre, .mono {
   display: grid;
   grid-template-columns: 240px 1fr;
   grid-template-rows: 56px 1fr;
+  grid-template-areas:
+    "top top"
+    "side main";
   min-height: 100vh;
   height: 100vh;
   overflow: hidden;
@@ -203,23 +206,29 @@ code, kbd, pre, .mono {
   .app {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      "top"
+      "side"
+      "main";
   }
 }
 
 /* ── Top Header Bar ── */
 .top, .top-header {
+  grid-area: top;
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
   gap: 14px;
   padding: 0 20px;
-  background: rgba(13, 18, 29, 0.85);
+  background: rgba(13, 18, 29, 0.95);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--line);
   box-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
   z-index: 10;
   height: 56px;
+  width: 100%;
 }
 
 .top-brand, .header-brand {
@@ -254,6 +263,7 @@ code, kbd, pre, .mono {
 
 /* ── Sidebar Navigation ── */
 .side, .sidebar {
+  grid-area: side;
   background: rgba(13, 18, 29, 0.95);
   border-right: 1px solid var(--line);
   padding: 14px 10px;
@@ -345,6 +355,7 @@ code, kbd, pre, .mono {
 
 /* ── Main Content Area ── */
 .main, .main-content {
+  grid-area: main;
   padding: 24px 28px;
   overflow-y: auto;
   background: transparent;

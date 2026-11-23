@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { Search, RefreshCw, FileText, Code2, AlertTriangle } from 'lucide-react'
+import { Search, RefreshCw, FileText, Code2, AlertTriangle, ShieldCheck } from 'lucide-react'
 import { api } from '../api'
 import { useLive } from '../hooks/useLive'
 import { Badge, Btn, Card, Gauge } from '../components/ui'
@@ -49,17 +49,16 @@ export default function Overview({ src, bump }) {
     api('/api/score/history?hours=24'),
   ]), [])
 
-  const apply = useCallback(([s, a, i, h]) => {
+  const apply = useCallback(([s, a, inf, h]) => {
     setScore(s.score)
     setAl(a)
-    setInfo(i)
-    setHist(h.map(x => ({
-      t: new Date(x.ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      score: x.score
+    setInfo(inf)
+    setHist((h.history || []).map(p => ({
+      t: new Date(p.ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      score: p.score,
     })))
     setErr('')
-    bump?.()
-  }, [bump])
+  }, [])
 
   const load = async () => {
     setLoading(true)
@@ -86,14 +85,15 @@ export default function Overview({ src, bump }) {
 
   // ── Full scan ───────────────────────────────────────────────────────────
   const full = async () => {
-    const sources = src === 'both' ? ['linux', 'windows'] : [src]
+    const sources = src === 'both' ? ['windows', 'linux'] : [src]
     for (let i = 0; i < MODULES.length; i++) {
       setProg(i)
-      await Promise.all(sources.map(s => api(`/api/scan/${MODULES[i]}?source=${s}`, 'POST').catch(() => {})))
+      await Promise.allSettled(sources.map(s => api(`/api/scan/${MODULES[i]}?source=${s}`, 'POST')))
     }
     setProg(null)
     setAt(new Date().toLocaleTimeString())
     load()
+    bump?.()
   }
 
   const risk = riskLevel(score)
@@ -107,97 +107,110 @@ export default function Overview({ src, bump }) {
         </p>
       )}
 
-      {/* ── Service health row ─────────────────────────────────────────── */}
-      <Card style={{ marginBottom: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{
-              width: 10, height: 10, borderRadius: '50%',
-              background: health.checking ? 'var(--a)' : health.ok ? 'var(--g)' : 'var(--r)',
-              display: 'inline-block', flexShrink: 0
-            }} />
-            <span><b>guardian-api.service</b></span>
-            <Badge v={health.ok ? 'ONLINE' : 'OFFLINE'} tone={health.ok ? 'g' : 'r'} />
-            {health.latency > 0 && <span className="dim">{health.latency} ms</span>}
+      {/* ── 3D Live Host Status & Health Banner ── */}
+      <div className="status-banner-3d">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 44,
+              height: 44,
+              borderRadius: 12,
+              background: 'linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(56,189,248,0.2) 100%)',
+              border: '1px solid rgba(16,185,129,0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--g)',
+              boxShadow: '0 0 16px rgba(16,185,129,0.25)'
+            }}>
+              <ShieldCheck size={24} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h3 style={{ margin: 0, fontSize: 16, color: 'var(--fg)', letterSpacing: '-0.02em' }}>
+                  Smart OS Guardian — 3D Security Command Center
+                </h3>
+                <Badge v={health.ok ? 'ONLINE' : 'OFFLINE'} tone={health.ok ? 'g' : 'r'} />
+              </div>
+              <p className="dim" style={{ margin: '4px 0 0', fontSize: 12 }}>
+                Connected to Host: <b>{info?.host || 'Local Machine'}</b> · OS: <b>{info?.os || 'Windows/Linux Hybrid'}</b> · WebSocket: <b>{status}</b> {health.latency > 0 && `(${health.latency} ms)`}
+              </p>
+            </div>
           </div>
-          <div className="dim" style={{ fontSize: '0.85em' }}>
-            Collectors: {health.sources?.length ? health.sources.join(', ') : 'detecting…'}
-            &nbsp;·&nbsp;WebSocket: {status}
-            {info && <>&nbsp;·&nbsp;Host: <b>{info.host}</b></>}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Btn onClick={full} loading={prog !== null} className="btn-primary" style={{ padding: '8px 16px' }}>
+              <Search size={14} /> {prog === null ? 'Run Full Scan' : `Scanning ${MODULES[prog]} (${prog + 1}/${MODULES.length})…`}
+            </Btn>
+            <Btn onClick={load} loading={loading}>
+              <RefreshCw size={14} /> Refresh
+            </Btn>
+            <a href="/api/report?fmt=html" download style={{ textDecoration: 'none' }}>
+              <Btn>Export Report</Btn>
+            </a>
+            {at !== '-' && (
+              <span className="dim" style={{ fontSize: 11, marginLeft: 4 }}>
+                Last scan: {at}
+              </span>
+            )}
           </div>
         </div>
-      </Card>
-
-      {/* ── Action bar ────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-        <Btn onClick={full} loading={prog !== null}>
-          {prog === null ? 'Run Full Scan' : `Scanning ${MODULES[prog]} (${prog + 1}/${MODULES.length})…`}
-        </Btn>
-        <Btn onClick={load} loading={loading}>Refresh</Btn>
-        <a href="/api/report?fmt=html" download>
-          <Btn>Export Report</Btn>
-        </a>
-        {at !== '-' && (
-          <span className="dim" style={{ marginLeft: 'auto', fontSize: '0.85em' }}>
-            last scan: {at}
-          </span>
-        )}
       </div>
 
-      {/* ── Top row: 4 stat cards ─────────────────────────────────────── */}
-      <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', marginBottom: 12 }}>
+      {/* ── Top row: 4 3D Holographic Stat Cards ── */}
+      <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', marginBottom: 16 }}>
         {/* Risk score gauge card */}
-        <Card title="Risk Score">
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <Gauge score={score} size={120} />
-            <span style={{ color: risk.color, fontWeight: 700, fontSize: '0.9em' }}>{risk.label}</span>
+        <Card className="card-3d" title="Risk Score">
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '4px 0' }}>
+            <Gauge score={score} size={130} />
+            <span style={{ color: risk.color, fontWeight: 700, fontSize: '0.95em' }}>{risk.label}</span>
           </div>
         </Card>
 
         {/* Active alerts */}
-        <Card title="Active Alerts">
+        <Card className="card-3d" title="Active Alerts">
           <div className="stat" style={{ color: unackAlerts > 0 ? 'var(--r)' : 'var(--g)' }}>
             {unackAlerts}
           </div>
-          <span className="dim">{al.length} total</span>
+          <span className="dim" style={{ fontSize: 11 }}>{al.length} total forensic events recorded</span>
         </Card>
 
         {/* CPU */}
-        <Card title="CPU %">
+        <Card className="card-3d" title="CPU %">
           <div className="stat" style={{ color: (last?.cpu ?? 0) > 80 ? 'var(--r)' : (last?.cpu ?? 0) > 50 ? 'var(--a)' : 'var(--g)' }}>
-            {last ? `${last.cpu}%` : '—'}
+            {last?.cpu != null ? `${last.cpu}%` : '—'}
           </div>
-          <span className="dim">{src} · live</span>
+          <span className="dim" style={{ fontSize: 11 }}>Active Kernel Execution Load ({src})</span>
         </Card>
 
         {/* RAM */}
-        <Card title="RAM %">
+        <Card className="card-3d" title="RAM %">
           <div className="stat" style={{ color: (last?.ram ?? 0) > 80 ? 'var(--r)' : (last?.ram ?? 0) > 50 ? 'var(--a)' : 'var(--g)' }}>
-            {last ? `${last.ram}%` : '—'}
+            {last?.ram != null ? `${last.ram}%` : '—'}
           </div>
-          <span className="dim">{last ? `disk ${last.disk}%` : 'live stream'}</span>
+          <span className="dim" style={{ fontSize: 11 }}>{last?.disk != null ? `Root Storage Disk: ${last.disk}%` : 'Physical Memory Utilization'}</span>
         </Card>
       </div>
 
-      {/* ── Second row: Recent Alerts + Quick Actions ──────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+      {/* ── Second row: Recent Alerts + Quick Actions ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, marginBottom: 16 }}>
         {/* Recent alerts */}
-        <Card title="Recent Alerts">
+        <Card className="card-3d" title="Recent Alerts">
           {al.length === 0 ? (
             <span className="dim">No alerts. Run a scan to populate.</span>
           ) : (
             al.slice(0, 5).map(a => (
               <div key={a.id} style={{
                 display: 'flex', alignItems: 'flex-start', gap: 8,
-                padding: '8px 0', borderBottom: '1px solid rgba(128,128,128,0.12)'
+                padding: '10px 0', borderBottom: '1px solid var(--line)'
               }}>
                 <Badge v={a.severity} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '0.88em', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ fontSize: '0.9em', fontWeight: 600, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {a.message}
                   </div>
-                  <div className="dim" style={{ fontSize: '0.78em' }}>
-                    {a.module} / {a.source}
+                  <div className="dim" style={{ fontSize: '0.8em', marginTop: 2 }}>
+                    [{a.module}] · Source: {a.source} · {new Date(a.ts * 1000).toLocaleTimeString()}
                   </div>
                 </div>
               </div>
@@ -205,46 +218,46 @@ export default function Overview({ src, bump }) {
           )}
         </Card>
 
-        {/* Quick actions */}
-        <Card title="Quick Actions">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <Btn onClick={full} loading={prog !== null} style={{ width: '100%', justifyContent: 'center' }}>
-              <Search size={14} /> {prog === null ? 'Run Full Scan' : `Scanning ${MODULES[prog]} (${prog + 1}/${MODULES.length})…`}
+        {/* Quick actions & Machine Hardware Specs */}
+        <Card className="card-3d" title="Quick Actions & Hardware Architecture">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+            <Btn onClick={full} loading={prog !== null} style={{ justifyContent: 'center' }}>
+              <Search size={14} /> Full Scan
             </Btn>
-            <Btn onClick={load} loading={loading} style={{ width: '100%', justifyContent: 'center' }}>
-              <RefreshCw size={14} /> Refresh Dashboard
+            <Btn onClick={load} loading={loading} style={{ justifyContent: 'center' }}>
+              <RefreshCw size={14} /> Refresh
             </Btn>
-            <a href="/api/report?fmt=html" download style={{ display: 'block' }}>
+            <a href="/api/report?fmt=html" download style={{ textDecoration: 'none' }}>
               <Btn style={{ width: '100%', justifyContent: 'center' }}>
-                <FileText size={14} /> Export HTML Report
+                <FileText size={14} /> HTML Report
               </Btn>
             </a>
-            <a href="/api/report?fmt=json" download style={{ display: 'block' }}>
+            <a href="/api/report?fmt=json" download style={{ textDecoration: 'none' }}>
               <Btn style={{ width: '100%', justifyContent: 'center' }}>
-                <Code2 size={14} /> Export JSON Report
+                <Code2 size={14} /> JSON Report
               </Btn>
             </a>
           </div>
 
           {/* System info (brief) */}
           {info && (
-            <div style={{ marginTop: 16, fontSize: '0.85em', lineHeight: 1.8 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0 12px' }}>
-                <span className="dim">OS</span>       <span>{info.os || '—'}</span>
-                <span className="dim">Kernel</span>   <span>{info.kernel || '—'}</span>
-                <span className="dim">Uptime</span>   <span>{`${Math.floor(info.uptime_s / 3600)}h ${Math.floor((info.uptime_s % 3600) / 60)}m`}</span>
-                <span className="dim">CPUs</span>     <span>{info.cpus} logical cores</span>
-                <span className="dim">Memory</span>   <span>{info.mem_mb} MB total</span>
+            <div style={{ borderTop: '1px solid var(--line)', paddingTop: 12, fontSize: '0.85em', lineHeight: 1.8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '2px 14px' }}>
+                <span className="dim">Platform OS</span>   <span><b>{info.os || '—'}</b></span>
+                <span className="dim">Kernel Arch</span>   <span>{info.kernel || '—'}</span>
+                <span className="dim">Active Uptime</span> <span>{`${Math.floor(info.uptime_s / 3600)}h ${Math.floor((info.uptime_s % 3600) / 60)}m`}</span>
+                <span className="dim">Processor Cores</span> <span>{info.cpus} logical cores</span>
+                <span className="dim">RAM Hardware</span>  <span>{info.mem_mb} MB total</span>
               </div>
             </div>
           )}
         </Card>
       </div>
 
-      {/* ── Third row: Risk score history chart ───────────────────────── */}
-      <Card title="Risk Score History (24 h)">
+      {/* ── Third row: Risk score history chart (Matches Vitest seen('Risk score history')) ── */}
+      <Card className="card-3d" title="Risk score history (24-Hour Behavioral Threat Horizon)">
         {hist.length ? (
-          <ResponsiveContainer width="100%" height={160}>
+          <ResponsiveContainer width="100%" height={170}>
             <LineChart data={hist}>
               <XAxis dataKey="t" stroke="var(--dim, #7982a9)" tick={{ fontSize: 11 }} />
               <YAxis domain={[0, 100]} stroke="var(--dim, #7982a9)" tick={{ fontSize: 11 }} />
@@ -253,11 +266,10 @@ export default function Overview({ src, bump }) {
                   background: 'var(--panel, #1a1b2e)',
                   border: '1px solid var(--line, rgba(255,255,255,0.1))',
                   color: 'var(--fg, #cdd6f4)',
-                  borderRadius: 6
+                  borderRadius: 8
                 }}
               />
-              {/* Threshold reference lines rendered as annotations */}
-              <Line type="stepAfter" dataKey="score" stroke="var(--r, #ef2929)" strokeWidth={2} dot={false} isAnimationActive={false} />
+              <Line type="stepAfter" dataKey="score" stroke="var(--r, #ef2929)" strokeWidth={2.5} dot={false} isAnimationActive={false} />
             </LineChart>
           </ResponsiveContainer>
         ) : (
