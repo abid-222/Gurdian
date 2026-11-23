@@ -18,18 +18,18 @@
 
 ## 📌 Overview
 
-**Smart OS Guardian** is an enterprise-grade, lightweight security monitoring system and intrusion detection dashboard designed for both **Linux (native or WSL2)** and **Windows** systems.
+**Smart OS Guardian** is a robust, lightweight security monitoring system and intrusion detection dashboard designed for both **Linux (native or WSL2)** and **Windows** systems.
 
 Unlike traditional mock-up security panels, **Smart OS Guardian operates strictly on 100% REAL system data**:
 - **Zero Mock Data**: Reads live kernel metrics, network sockets, running processes, Windows Event Logs, `/var/log/auth.log`, and hardware buses.
 - **Read-Only Collectors**: Collectors strictly **READ** the host system without making unintended state modifications.
-- **Micro-Footprint**: Stores state locally in an encrypted/contained SQLite database (`data/guardian.db`) and user watchlists (`data/watchlist.user.conf`).
+- **Micro-Footprint**: Stores state locally in a contained SQLite database (`data/guardian.db`) and user watchlists (`data/watchlist.user.conf`).
 
 ---
 
 ## 🚀 Key Features
 
-- 🎨 **Multi-Theme Cyberpunk Engine**: Switch dynamically between **Ubuntu Aubergine**, **Tokyo Night**, **Nord Arctic**, and **Dracula Vampire** with instant live preview.
+- 🎨 **Modern GNOME/Ubuntu Design System**: Clean, user-friendly desktop aesthetic inspired by modern Ubuntu and GNOME, featuring both Light (Yaru-inspired) and Dark themes alongside Tokyo Night and Nord options.
 - ⚡ **Real-Time Live Telemetry (WebSockets)**: Continuous sub-second CPU, multi-core utilization, RAM consumption, and network RX/TX bandwidth throughput. Supports **Both Mode** showing Linux & Windows metrics side-by-side.
 - 🧭 **Real Port Geometry Radar**: Sockets mapped by port range (Inner: <1024 system ports, Mid: registered, Outer: dynamic) and protocol angle.
 - 🛡️ **Dynamic Service Health Auditing**: Real-time `/api/health` monitoring with latency diagnostics.
@@ -41,12 +41,12 @@ Unlike traditional mock-up security panels, **Smart OS Guardian operates strictl
 - 📂 **Cryptographic File Vault**: Monitors critical configuration files (`/etc/passwd`, `/etc/sudoers`, hosts, SSH authorized keys, PowerShell profiles) using SHA-256 baseline hashing.
 - 🔌 **Hardware & USB Bus Monitor**: Real-time detection of inserted USB flash drives, HID bad-USB devices, and peripheral hardware changes.
 - 🧠 **Smart Risk Engine**: 19 rule-based behavioral threat analyzers calculating real-time host vulnerability scores (`SAFE`, `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`).
-- 🔔 **Live Alert Push & MITRE ATT&CK Drawer**: Real-time alert polling, toast notifications for HIGH threats, status bar threat flash, and clickable MITRE ATT&CK technique references.
-- 📋 **Table Usability & Filtering**: Client-side full-text search, multi-column sorting, and pagination across all modules.
+- 🔔 **Live Alert Push & MITRE ATT&CK Drawer**: Real-time alert polling, toast notifications for threats, and clickable MITRE ATT&CK technique references.
+- 📋 **Table Usability & Filtering**: Client-side full-text search, multi-column sorting, friendly readable headers, and pagination across all modules.
 - 💻 **Sandboxed Command Terminal**: Built-in xterm.js terminal with tab auto-completion, command history, output clipboard copy, and whitelisted commands (`guardian status`, `guardian procs`, `guardian top`, `guardian timeline`, etc.).
+- 🎯 **Interactive Demonstration & Defense Lab**: Interactive live proof panel allowing testers and supervisors to simulate events and verify threat alerts in seconds.
 - ⚙️ **Settings & Custom Watchlist**: Manage theme, refresh intervals, and add custom filesystem paths to the File Vault directly from the UI.
 - 👥 **Team Presentation / Viva Defense Page**: Interactive team portfolio featuring member roles, module ownership, and defense talking points.
-- ✈️ **100% Offline-Ready**: Bundles `@fontsource/jetbrains-mono` locally without external Google Fonts dependencies.
 - 📊 **Multi-Format Security Reports**: One-click instant reports exported in **HTML**, **plain text**, or structured **JSON**.
 
 ---
