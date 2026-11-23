@@ -1,0 +1,3 @@
+linux	cron	/etc/cron.d/old	abc
+linux	cron	/etc/cron.d/evil	def
+linux	service	/etc/systemd/system/x.service	123

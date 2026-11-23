@@ -1,0 +1,3 @@
+ USERNAME              SESSIONNAME        ID  STATE   IDLE TIME  LOGON TIME
+>alice                 console             1  Active      none   11/22/2026 9:05 AM
+ bob                                       2  Disc        1:02   11/21/2026 6:30 PM

@@ -1,0 +1,5 @@
+linux	tcp	0.0.0.0	22	LISTEN	sshd	-
+linux	tcp	0.0.0.0	9999	LISTEN	nc	-
+linux	tcp	10.0.0.2	5555	ESTABLISHED	curl	8.8.8.8
+linux	tcp	10.0.0.2	5556	ESTABLISHED	ssh	192.168.1.7
+linux	tcp	10.0.0.2	5557	ESTABLISHED	wget	1.1.1.1

@@ -1,0 +1,5 @@
+linux	1	0	0	init	/sbin/init	0.0	100	ok
+linux	2	1	0	miner	/home/a/miner	80.5	100	ok
+linux	3	1	0	kthreadd	-	0.0	0	ok
+windows	4	1	-	powershell.exe	C:\ps.exe	1	100	ok
+linux	5	1	0	newbie	/usr/bin/newbie	0.0	100	ok

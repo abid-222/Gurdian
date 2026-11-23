@@ -1,0 +1,6 @@
+linux	user_account	mallory	u1
+linux	suid_file	/usr/bin/evil	4755
+linux	world_writable	/etc/evil.conf	777
+linux	shell_rc	/home/a/.bashrc	newhash
+linux	shell_rc	/home/a/.profile	same
+linux	user_account	root	r1

@@ -1,0 +1,5 @@
+# Compact one-line style is intentional in this project; real problems (F = pyflakes, E9 = syntax) stay enabled.
+line-length = 220
+[lint]
+select = ["E", "F"]
+ignore = ["E401", "E701", "E702", "E731", "E741"]

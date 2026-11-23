@@ -1,0 +1,28 @@
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/package-lock.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Databases & Runtime Data
+data/*.db
+data/*.db-journal
+data/*.log
+data/watchlist.user.conf
+
+# Environment Variables & Secrets
+.env
+.env.local
+
+# OS Specific
+.DS_Store
+Thumbs.db

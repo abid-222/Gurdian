@@ -1,0 +1,4 @@
+linux	Nov 22 10:02:00	alice	-	SUCCESS	sudo
+linux	Nov 22 10:03:00	alice	-	SUCCESS	sudo
+linux	Nov 22 10:04:00	alice	-	SUCCESS	su
+linux	Nov 22 10:05:00	bob	10.0.0.1	SUCCESS	ssh

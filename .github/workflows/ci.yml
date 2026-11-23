@@ -1,0 +1,15 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get install -y shellcheck && shellcheck -x -e SC1091 bash/*/*.sh
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: bash tests/bash/test_contract.sh
+      - run: pip install -r backend/requirements.txt pytest ruff && ruff check backend && pytest tests/backend
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: cd frontend && npm install && npm run lint && npm test && npm run build

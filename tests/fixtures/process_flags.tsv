@@ -1,0 +1,3 @@
+linux	10	1	0	ghost	/tmp/ghost (deleted)	0	5	deleted_binary
+linux	11	1	0	miner	/tmp/miner	0	5	tmp_exec
+linux	12	1	0	bash	/bin/bash	0	5	ok

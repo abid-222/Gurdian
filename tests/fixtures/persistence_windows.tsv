@@ -1,0 +1,3 @@
+windows	run_key	HKCU\Run\Evil	aaa
+windows	sched_task	\EvilTask	bbb
+windows	run_key	HKCU\Run\Old	ccc
