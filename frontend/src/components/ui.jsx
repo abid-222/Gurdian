@@ -35,40 +35,12 @@ export const Badge = ({ v, tone }) => {
 }
 
 // ─── BTN ──────────────────────────────────────────────────────────────────────
-export const Btn = ({ variant = 'primary', on, loading, children, className = '', ...p }) => {
-  // 'on' is used to pick variant (active state) but must NOT be spread to DOM
-  const v = on !== undefined ? (on ? 'primary' : 'secondary') : variant
-  const styles = {
-    primary: {
-      background: 'var(--accent)',
-      color: '#fff',
-      border: 'none',
-      borderRadius: '8px',
-    },
-    secondary: {
-      background: 'transparent',
-      color: 'var(--accent)',
-      border: '1.5px solid var(--accent)',
-      borderRadius: '8px',
-    },
-    ghost: {
-      background: 'transparent',
-      color: 'var(--text-secondary, #666)',
-      border: 'none',
-      borderRadius: '8px',
-    },
-    danger: {
-      background: 'var(--r, #e53e3e)',
-      color: '#fff',
-      border: 'none',
-      borderRadius: '8px',
-    },
-  }
-  const s = styles[v] || styles.primary
+export const Btn = ({ variant, on, loading, children, className = '', ...p }) => {
+  const activeClass = on ? 'on' : ''
+  const variantClass = variant ? `btn-${variant}` : ''
   return (
     <button
-      className={`btn btn-${v} ${className}`}
-      style={s}
+      className={`btn ${activeClass} ${variantClass} ${className}`.trim()}
       disabled={loading || p.disabled}
       {...p}
     >
@@ -79,32 +51,8 @@ export const Btn = ({ variant = 'primary', on, loading, children, className = ''
 
 // ─── CARD ─────────────────────────────────────────────────────────────────────
 export const Card = ({ title, children, className = '', style }) => (
-  <div
-    className={`card ${className}`}
-    style={{
-      background: 'var(--surface, #fff)',
-      borderRadius: '12px',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-      border: 'none',
-      padding: '16px',
-      ...style,
-    }}
-  >
-    {title && (
-      <h4
-        style={{
-          fontSize: '13px',
-          fontWeight: 600,
-          color: 'var(--text-secondary, #666)',
-          marginBottom: '12px',
-          marginTop: 0,
-          textTransform: 'uppercase',
-          letterSpacing: '0.03em',
-        }}
-      >
-        {title}
-      </h4>
-    )}
+  <div className={`card ${className}`} style={style}>
+    {title && <h4>{title}</h4>}
     {children}
   </div>
 )
@@ -112,10 +60,8 @@ export const Card = ({ title, children, className = '', style }) => (
 // ─── STAT ─────────────────────────────────────────────────────────────────────
 export const Stat = ({ label, value, sub }) => (
   <Card title={label}>
-    <div className="stat" style={{ fontSize: '28px', fontWeight: 700, lineHeight: 1.2 }}>
-      {value}
-    </div>
-    {sub && <span className="dim" style={{ fontSize: '12px', color: 'var(--text-secondary, #888)' }}>{sub}</span>}
+    <div className="stat">{value}</div>
+    {sub && <span className="dim">{sub}</span>}
   </Card>
 )
 

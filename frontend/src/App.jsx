@@ -105,30 +105,26 @@ function CommandPalette({ go, close }) {
   return (
     <div className="pal-overlay" onClick={close}>
       <div className="pal" onClick={e => e.stopPropagation()}>
-        <div className="pal-search-row">
-          <span className="pal-search-icon">🔍</span>
-          <input
-            ref={inputRef}
-            value={q}
-            placeholder="Jump to page… (Enter · Esc to close)"
-            onChange={e => setQ(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && matches[0]) go(matches[0].key)
-              if (e.key === 'Escape') close()
-            }}
-          />
-          <kbd>Ctrl+K</kbd>
-        </div>
-        <div className="pal-results">
+        <input
+          ref={inputRef}
+          value={q}
+          placeholder="Search pages or press Esc to close…"
+          onChange={e => setQ(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && matches[0]) go(matches[0].key)
+            if (e.key === 'Escape') close()
+          }}
+        />
+        <div>
           {matches.map(item => (
-            <div key={item.key} className="pal-item" onClick={() => go(item.key)}>
-              <span className="pal-item-icon">{item.icon}</span>
-              <span className="pal-item-label">{item.label}</span>
-              <span className="pal-item-key dim">#{item.key}</span>
+            <div key={item.key} onClick={() => go(item.key)} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 16 }}>{item.icon}</span>
+              <span style={{ fontWeight: 500 }}>{item.label}</span>
+              <span className="dim" style={{ marginLeft: 'auto' }}>#{item.key}</span>
             </div>
           ))}
           {matches.length === 0 && (
-            <div className="pal-empty dim">No pages match "{q}"</div>
+            <div className="dim" style={{ padding: '8px 12px' }}>No pages match "{q}"</div>
           )}
         </div>
       </div>
@@ -147,7 +143,7 @@ function Main() {
   }
 
   const [page, setPage]       = useState(getHashPage)
-  const [src, setSrc]         = useState('both')
+  const [src, setSrc]         = useState('linux')
   const [pal, setPal]         = useState(false)
   const [score, setScore]     = useState(0)
   const [theme, setTheme]     = useState(() =>
@@ -211,11 +207,7 @@ function Main() {
   }, [bump])
 
   const V = VIEWS[page] || Overview
-
-  // Toast severity is derived from the alert's own score field if available,
-  // or falls back to the global score — either way, use riskLevel() consistently.
   const toastRisk = t => riskLevel(t.score ?? score)
-
   const dismissToast = id => setToasts(prev => prev.filter(t => t.id !== id))
 
   return (
@@ -227,20 +219,21 @@ function Main() {
           const tr = toastRisk(t)
           const isSerious = (t.score ?? score) >= 70
           return (
-            <div key={t.id} className={`toast ${isSerious ? 'toast-serious' : ''}`}>
-              <div className="toast-header">
-                <span style={{ color: tr.color, fontWeight: 600 }}>
+            <div key={t.id} className="toast" style={{ borderLeftColor: tr.color }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: tr.color, fontWeight: 700 }}>
                   {isSerious ? '⚠️' : '🔔'} {tr.label} THREAT DETECTED
                 </span>
                 <button
-                  className="toast-close"
+                  className="btn btn-sm btn-danger"
+                  style={{ padding: '0 4px', margin: 0, border: 'none', background: 'transparent' }}
                   onClick={() => dismissToast(t.id)}
                   aria-label="Dismiss"
                 >
                   ✕
                 </button>
               </div>
-              <div className="toast-body">
+              <div style={{ marginTop: 4, fontSize: 11 }}>
                 [{t.module}] {t.message}
               </div>
             </div>
@@ -256,82 +249,105 @@ function Main() {
         />
       )}
 
-      {/* ── Top header ── */}
-      <header className="top-header">
-        {/* Brand */}
-        <div className="header-brand">
-          <span className="brand-shield">🛡️</span>
-          <span className="brand-name">Smart OS Guardian</span>
-          <span className="badge badge-version">v6.0</span>
+      {/* ── Top Header ── */}
+      <header className="top">
+        <div className="top-brand">
+          <span style={{ fontSize: 18 }}>🛡️</span>
+          <span style={{ fontWeight: 700, fontSize: 14 }}>Smart OS Guardian</span>
+          <span className="badge p">v6.0</span>
         </div>
 
-        <div className="header-spacer" />
+        <span style={{ flex: 1 }} />
 
         {/* Status dot + risk chip */}
-        <div className="header-status">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 12 }}>
           <span
-            className={`status-dot ${hasHighAlert ? 'status-dot-threat' : 'status-dot-safe'}`}
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              background: hasHighAlert ? 'var(--r)' : 'var(--g)',
+              display: 'inline-block'
+            }}
             title={hasHighAlert ? 'Threat active' : 'All clear'}
           />
           <span
-            className="risk-chip"
-            style={{ background: risk.color + '22', color: risk.color, borderColor: risk.color + '55' }}
+            className="badge"
+            style={{
+              background: risk.color + '20',
+              color: risk.color,
+              borderColor: risk.color,
+              padding: '2px 8px',
+              fontSize: 11,
+              fontWeight: 600,
+              borderRadius: 14
+            }}
           >
             Risk: {score} · {risk.label}
           </span>
         </div>
 
-        {/* Theme selector */}
+        {/* Theme select */}
         <select
-          className="header-select"
           value={theme}
           onChange={e => setTheme(e.target.value)}
-          aria-label="Theme"
+          aria-label="Theme selector"
+          style={{
+            background: 'var(--panel)',
+            color: 'var(--fg)',
+            border: '1px solid var(--line)',
+            borderRadius: 6,
+            padding: '3px 8px',
+            fontSize: 11,
+            marginRight: 8,
+            cursor: 'pointer'
+          }}
         >
           <option value="ubuntu">Ubuntu</option>
+          <option value="ubuntu-dark">Ubuntu Dark</option>
           <option value="tokyo-night">Tokyo Night</option>
           <option value="nord">Nord</option>
           <option value="dracula">Dracula</option>
         </select>
 
         {/* Source selector */}
-        <div className="source-selector" role="group" aria-label="Data source">
-          <span className="dim source-label">Source</span>
-          {['linux', 'windows', 'both'].map(s => (
-            <button
-              key={s}
-              className={`source-btn${s === src ? ' active' : ''}`}
-              onClick={() => setSrc(s)}
-            >
-              {s === 'linux' ? '🐧' : s === 'windows' ? '🪟' : '⊕'} {s}
-            </button>
-          ))}
-        </div>
+        <span className="dim" style={{ marginRight: 4 }}>Source:</span>
+        {['linux', 'windows', 'both'].map(s => (
+          <button
+            key={s}
+            className={`btn btn-sm ${s === src ? 'on' : ''}`}
+            style={{ margin: '0 2px', padding: '3px 8px', fontSize: 11 }}
+            onClick={() => setSrc(s)}
+          >
+            {s === 'linux' ? '🐧' : s === 'windows' ? '🪟' : '⊕'} {s}
+          </button>
+        ))}
 
         {/* Ctrl+K hint */}
         <button
-          className="pal-trigger"
+          className="btn btn-sm"
+          style={{ marginLeft: 6, padding: '3px 8px', fontSize: 11 }}
           onClick={() => setPal(true)}
           title="Command palette (Ctrl+K)"
         >
-          <kbd>Ctrl+K</kbd>
+          <kbd style={{ fontSize: 10 }}>Ctrl+K</kbd>
         </button>
       </header>
 
       {/* ── Sidebar ── */}
-      <nav className="sidebar" aria-label="Main navigation">
+      <nav className="side" aria-label="Main navigation">
         {NAV_GROUPS.map(group => (
-          <div key={group.label} className="nav-group">
-            <div className="nav-group-label">{group.label}</div>
+          <div key={group.label} style={{ marginBottom: 4 }}>
+            <div className="side-group-label">{group.label}</div>
             {group.items.map(item => (
               <button
                 key={item.key}
-                className={`nav-item${item.key === page ? ' active' : ''}`}
+                className={`side-btn ${item.key === page ? 'on' : ''}`}
                 onClick={() => navigate(item.key)}
                 aria-current={item.key === page ? 'page' : undefined}
               >
-                <span className="nav-item-icon">{item.icon}</span>
-                <span className="nav-item-label">{item.label}</span>
+                <span className="side-btn-icon">{item.icon}</span>
+                <span>{item.label}</span>
               </button>
             ))}
           </div>
@@ -339,17 +355,17 @@ function Main() {
       </nav>
 
       {/* ── Main content ── */}
-      <main className="main-content">
-        <div className="page-header">
-          <h1 className="page-title">
-            <span className="page-title-icon">{currentItem.icon}</span>
-            {currentItem.label}
-          </h1>
-          <span className="dim page-hint">
-            Press <kbd>Ctrl+K</kbd> to jump to any page
+      <main className="main">
+        <div className="main-header">
+          <h2>
+            <span>{currentItem.icon}</span>
+            <span>{currentItem.label}</span>
+          </h2>
+          <span className="dim" style={{ fontSize: 12 }}>
+            Press <kbd style={{ background: 'var(--panel)', padding: '2px 5px', borderRadius: 4, border: '1px solid var(--line)' }}>Ctrl+K</kbd> to jump
           </span>
         </div>
-        <div className="page-body">
+        <div>
           <V key={page + src} mod={page} src={src} bump={bump} theme={theme} setTheme={setTheme} />
         </div>
       </main>
