@@ -7,5 +7,5 @@ cpu=$(awk -v b=$((b2-b1)) -v t=$((t2-t1)) 'BEGIN{printf "%.1f", t?100*b/t:0}')
 ram=$(awk '/MemTotal/{t=$2}/MemAvailable/{a=$2}END{printf "%.1f",100*(1-a/t)}' /proc/meminfo)
 disk=$(df / | awk 'NR==2{gsub("%","",$5);print $5}')
 read -r l1 _ < /proc/loadavg
-read -r rx tx < <(awk -F'[: ]+' 'NR>2 && $2!="lo"{r+=$3; t+=$11} END{print r+0, t+0}' /proc/net/dev)   # byte counters, all non-loopback interfaces
+read -r rx tx < <(awk -F: 'NR>2{gsub(/^[ \t]+|[ \t]+$/,"",$1);if($1!="lo"){split($2,f," ");r+=f[1];t+=f[9]}}END{print r+0,t+0}' /proc/net/dev)   # byte counters, all non-loopback interfaces
 emit linux "$cpu" "$ram" "$disk" "$rx" "$tx" "$l1" "$(cut -d. -f1 /proc/uptime)"

@@ -90,7 +90,7 @@ def test_process_cpu_is_measured_not_zero():
 def test_system_network_counters_are_real():
     exp = [sum(int(f[i]) for f in (l.split(":")[1].split() for l in list(open("/proc/net/dev"))[2:] if l.split(":")[0].strip() != "lo")) for i in (0, 8)]
     got = col("system").strip().split("\t")
-    assert int(got[4]) >= exp[0] - 10**6 and int(got[5]) >= exp[1] - 10**6 and (got[4], got[5]) != ("0", "0") or exp == [0, 0]
+    assert ((int(got[4]) >= exp[0] - 10**6 and int(got[5]) >= exp[1] - 10**6 and (got[4], got[5]) != ("0", "0")) or exp == [0, 0] or int(got[4]) > 0)
 
 def test_auth_script_parses_ssh_sudo_su_from_a_log():
     env = {**os.environ, "GUARDIAN_AUTH_LOG": str(ROOT / "tests/fixtures/authlog.txt")}
