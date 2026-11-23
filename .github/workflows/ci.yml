@@ -11,5 +11,5 @@ jobs:
       - run: bash tests/bash/test_contract.sh
       - run: pip install -r backend/requirements.txt pytest ruff && ruff check backend tests/backend && pytest tests/backend
       - uses: actions/setup-node@v4
-        with: { node-version: 20 }
+        with: { node-version: 22 }
       - run: cd frontend && npm install && npm run lint && npm test && npm run build
