@@ -517,9 +517,9 @@ export default function AuthGate({ authStatus, onSuccess }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <Unlock size={19} color="#38bdf8" />
                 <div>
-                  <div style={{ fontWeight: 600, fontSize: 13 }}>Keep Open (No Password)</div>
+                  <div style={{ fontWeight: 600, fontSize: 13 }}>Keep Open &amp; Continue to Overview</div>
                   <div className="dim" style={{ fontSize: 11, marginTop: 2 }}>
-                    Enter directly. You can enable password protection anytime from the top bar.
+                    Enter without password. You can add password protection anytime from the top bar.
                   </div>
                 </div>
               </div>

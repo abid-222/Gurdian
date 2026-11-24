@@ -216,7 +216,15 @@ function Main() {
       return true
     }
   })
-  const [authStatus, setAuthStatus] = useState({ initialized: true, enabled: false, username: null, authenticated: true })
+  const [authStatus, setAuthStatus] = useState({ initialized: false, enabled: false, username: null, authenticated: false })
+  const [authReady, setAuthReady] = useState(false)
+  const [openAck, setOpenAck] = useState(() => {
+    try {
+      return sessionStorage.getItem('guardian_open_ack') === '1'
+    } catch {
+      return false
+    }
+  })
   const [showPassModal, setShowPassModal] = useState(false)
 
   const refreshAuth = useCallback(() => {
@@ -224,7 +232,10 @@ function Main() {
       .then(st => {
         if (st && typeof st.enabled === 'boolean') setAuthStatus(st)
       })
-      .catch(() => {})
+      .catch(() => {
+        setAuthStatus({ initialized: true, enabled: false, username: null, authenticated: true })
+      })
+      .finally(() => setAuthReady(true))
   }, [])
 
   useEffect(() => {
@@ -400,8 +411,30 @@ function Main() {
   const dismissToast = id => setToasts(prev => prev.filter(t => t.id !== id))
   const risk = riskLevel(score)
 
-  if (!authStatus.initialized || (authStatus.enabled && !authStatus.authenticated)) {
-    return <AuthGate authStatus={authStatus} onSuccess={st => setAuthStatus(st)} />
+  if (!authReady) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#07090e', color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
+        Initializing Guardian OS…
+      </div>
+    )
+  }
+
+  const needsSetupChoice = !authStatus.enabled && (!authStatus.initialized || !openAck)
+  const needsLogin = authStatus.enabled && !authStatus.authenticated
+
+  if (needsSetupChoice || needsLogin) {
+    return (
+      <AuthGate
+        authStatus={{ ...authStatus, initialized: authStatus.enabled ? true : false }}
+        onSuccess={st => {
+          setAuthStatus(st)
+          if (!st.enabled) {
+            try { sessionStorage.setItem('guardian_open_ack', '1') } catch { /* ignore */ }
+            setOpenAck(true)
+          }
+        }}
+      />
+    )
   }
 
   return (
