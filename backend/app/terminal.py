@@ -1,11 +1,10 @@
-import asyncio, datetime, getpass, json, logging, os, platform, shlex, socket, subprocess, time
+import asyncio, datetime, getpass, logging, os, platform, socket, time
 from pathlib import Path
 from fastapi import WebSocket
 import psutil
 from starlette.websockets import WebSocketDisconnect
-from app import deadlock
 from app.runner import ROOT, scan_one
-from database.db import current_score, db, record_score
+from database.db import current_score, db
 
 log = logging.getLogger('guardian.terminal')
 LOG = ROOT / "data" / "commands.log"
@@ -18,37 +17,30 @@ CMDS = [
     "guardian top",
     "guardian ports",
     "guardian alerts",
-    "guardian timeline",
     "guardian score",
-    "guardian persistence",
-    "guardian integrity",
-    "guardian usb",
-    "guardian deadlock status",
-    "guardian simulate port",
-    "guardian simulate reset",
+    "guardian timeline",
     "whoami",
-    "id",
-    "hostname",
     "pwd",
-    "ls -la",
+    "ls",
+    "dir",
     "uptime",
     "date",
-    "uname -a",
-    "ps aux",
-    "ss -tulnp",
-    "lsof -i",
-    "df -h",
-    "free -m",
+    "uname",
+    "ps",
+    "top",
+    "netstat",
+    "df",
+    "free",
     "ipconfig",
+    "ifconfig",
     "clear",
 ]
 
 DANGEROUS_SUBSTRINGS = [
     "rm ", "rmdir", "del ", "erase", "shutdown", "reboot", "format ", "drop ",
     "mkfs", "dd ", "chmod ", "chown", ":(){ :|:& };:", "kill -9 1", "taskkill /f /im explorer",
-    "taskkill /f /im svchost", "curl http", "wget http", ">", ">>", ";", "&&", "$(", "`",
+    "taskkill /f /im svchost", "curl http", "wget http"
 ]
-
 
 def format_bytes(n):
     for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
@@ -57,104 +49,46 @@ def format_bytes(n):
         n /= 1024.0
     return f"{n:.1f} PB"
 
+def term_cmd(raw_cmd):
+    cmd = " ".join(raw_cmd.strip().split())
+    if not cmd:
+        return ""
 
-def _apply_pipe_filter(text: str, pipe_cmd: str) -> str:
-    """Safely applies Linux text-processing filters (grep, head, tail, wc, sort, uniq)."""
-    try:
-        parts = shlex.split(pipe_cmd)
-    except ValueError:
-        parts = pipe_cmd.split()
-    if not parts:
-        return text
-
-    op = parts[0].lower()
-    args = parts[1:]
-    lines = text.splitlines()
-
-    if op == "grep":
-        ignore_case = "-i" in args
-        invert = "-v" in args
-        patterns = [a for a in args if not a.startswith("-")]
-        if not patterns:
-            return "grep: missing pattern"
-        pat = patterns[0].lower() if ignore_case else patterns[0]
-        matched = []
-        for ln in lines:
-            hay = ln.lower() if ignore_case else ln
-            hit = pat in hay
-            if (hit and not invert) or (not hit and invert):
-                matched.append(ln)
-        return "\n".join(matched) if matched else "(no matches)"
-
-    if op == "head":
-        n = 10
-        for i, a in enumerate(args):
-            if a == "-n" and i + 1 < len(args) and args[i + 1].isdigit():
-                n = int(args[i + 1])
-            elif a.startswith("-") and a[1:].isdigit():
-                n = int(a[1:])
-        return "\n".join(lines[:max(1, min(n, 200))])
-
-    if op == "tail":
-        n = 10
-        for i, a in enumerate(args):
-            if a == "-n" and i + 1 < len(args) and args[i + 1].isdigit():
-                n = int(args[i + 1])
-            elif a.startswith("-") and a[1:].isdigit():
-                n = int(a[1:])
-        return "\n".join(lines[-max(1, min(n, 200)):])
-
-    if op == "wc":
-        if "-l" in args:
-            return str(len(lines))
-        if "-w" in args:
-            return str(sum(len(ln.split()) for ln in lines))
-        if "-c" in args:
-            return str(len(text))
-        return f"  {len(lines)}  {sum(len(ln.split()) for ln in lines)}  {len(text)}"
-
-    if op == "sort":
-        rev = "-r" in args
-        return "\n".join(sorted(lines, reverse=rev))
-
-    if op == "uniq":
-        out = []
-        for ln in lines:
-            if not out or out[-1] != ln:
-                out.append(ln)
-        return "\n".join(out)
-
-    return f"pipe: '{op}' is not allowed in safe sandbox (allowed: grep, head, tail, wc, sort, uniq)"
-
-
-def _run_single_cmd(cmd: str) -> str:
     lower_cmd = cmd.lower()
+
+    # Safety check: block destructive commands and log refusal
+    for bad in DANGEROUS_SUBSTRINGS:
+        if bad in lower_cmd or lower_cmd == bad.strip():
+            LOG.parent.mkdir(parents=True, exist_ok=True)
+            with LOG.open("a", encoding="utf-8") as f:
+                f.write(f"{int(time.time())} REFUSED {cmd}\n")
+            return f"refused: '{cmd}' is not allowed (read-only safe terminal)"
 
     # 1. Help
     if lower_cmd == "help":
-        return "\n".join([
-            "\x1b[36m================================================================================\x1b[0m",
-            "\x1b[1;32m               SMART OS GUARDIAN UNIFIED SOC TERMINAL (v7.0)                  \x1b[0m",
-            "\x1b[36m================================================================================\x1b[0m",
-            "\x1b[33mUNIFIED GUARDIAN CLI:\x1b[0m",
-            "  guardian status              - Host posture, CPU, RAM, disk, and risk rating",
-            "  guardian score               - Numeric threat score (0-100)",
-            "  guardian procs / top / ports - Live processes, top CPU, and listening sockets",
-            "  guardian alerts / timeline   - SQLite alerts and chronological forensic events",
-            "  guardian inspect <pid>       - Deep-dive process tree, cmdline, and open ports",
-            "  guardian ack <id|all>        - Acknowledge security alert(s) and update score",
-            "  guardian deadlock <action>   - Control Deadlock Lab (status|create|prevent|resolve|cleanup)",
-            "  guardian simulate <action>   - Trigger/reset Attack Sim (port|temp|startup|reset)",
-            "  guardian scan <mod>          - Scan module (process|network|integrity|auth|persistence|usb)",
+        lines = [
+            "================================================================================",
+            "                   SMART OS GUARDIAN SECURE TERMINAL (v6.0)                     ",
+            "================================================================================",
+            "SECURITY & AUDIT COMMANDS:",
+            "  guardian status     - Full OS host posture, memory, CPU, and risk rating",
+            "  guardian score      - Current calculated mathematical threat score (0-100)",
+            "  guardian procs      - Active processes with flag annotations & CPU usage",
+            "  guardian top        - Top resource-consuming processes (htop style)",
+            "  guardian ports      - Active listening TCP/UDP sockets & bound processes",
+            "  guardian alerts     - Recent security anomalies from SQLite",
+            "  guardian timeline   - Chronological forensic event timeline",
+            "  guardian scan <mod> - Trigger live inspection (process, network, auth, etc.)",
             "",
-            "\x1b[33mLINUX / BASH UTILITIES & PIPES:\x1b[0m",
-            "  ps [aux], ss [-tulnp], lsof  - Process & network socket inspection",
-            "  ls [-la], pwd, cat <file>    - Project-scoped file inspection",
-            "  uname [-a], id, hostname     - Kernel, user identity, and host info",
-            "  free [-m], df [-h], uptime   - Memory, disk, and uptime telemetry",
-            "  Pipe filters: | grep <pat>, | head -n N, | tail -n N, | wc -l, | sort, | uniq",
-            "\x1b[36m================================================================================\x1b[0m",
-        ])
+            "CORE SHELL UTILITIES:",
+            "  whoami, pwd, ls/dir - Host user context, working directory, file browser",
+            "  uptime, date, uname - Kernel version, boot time, system timestamp",
+            "  ps, top, netstat    - Process tables and socket connections",
+            "  df, free, ipconfig  - Disk partitions, RAM capacity, network adapters",
+            "  echo <msg>, clear   - Standard terminal output & screen clear",
+            "================================================================================"
+        ]
+        return "\n".join(lines)
 
     # 2. Score (test requirement: must return digit alone!)
     if lower_cmd in ("guardian score", "score"):
@@ -170,24 +104,24 @@ def _run_single_cmd(cmd: str) -> str:
         cpu = psutil.cpu_percent(interval=None)
         disk = psutil.disk_usage(os.getcwd())
         s = current_score()
-        rating = "\x1b[32mSAFE\x1b[0m" if s < 30 else ("\x1b[33mELEVATED\x1b[0m" if s < 70 else "\x1b[31mCRITICAL\x1b[0m")
 
         return "\n".join([
             f"Host Node      : {platform.node()}",
-            f"Operating Sys  : {platform.system()} {platform.release()} ({platform.machine()})",
+            f"Operating Sys  : {platform.system()} {platform.release()} ({platform.version()})",
+            f"Architecture   : {platform.machine()}",
             f"Uptime         : {hours}h {minutes}m {seconds}s (Boot: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(boot))})",
             f"CPU Utilization: {cpu}% across {psutil.cpu_count(logical=True)} logical cores",
             f"Memory (RAM)   : {format_bytes(vm.used)} / {format_bytes(vm.total)} ({vm.percent}% used)",
             f"Disk Storage   : {format_bytes(disk.used)} / {format_bytes(disk.total)} ({disk.percent}% used)",
-            f"Risk Score     : {s} / 100 ({rating})",
-            "Defense Daemon : \x1b[32mOnline\x1b[0m (FastAPI + SQLite WAL)",
+            f"Risk Score     : {s} / 100 ({'SAFE' if s < 30 else 'ELEVATED' if s < 70 else 'CRITICAL'})",
+            "Defense Daemon : Online (FastAPI + SQLite Engine)"
         ])
 
     # 4. Top processes (preserves exact test contract headers)
     if lower_cmd in ("guardian top", "top"):
         try:
             procs = []
-            for p in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_info']):
+            for p in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_info', 'status']):
                 try:
                     info = p.info
                     cpu = info.get('cpu_percent') or 0.0
@@ -197,7 +131,7 @@ def _run_single_cmd(cmd: str) -> str:
                         'name': info['name'] or 'unknown',
                         'cpu': cpu,
                         'mem': mem,
-                        'flag': 'suspect' if cpu > 80.0 else 'ok',
+                        'flag': 'suspect' if cpu > 80.0 else 'ok'
                     })
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     continue
@@ -213,47 +147,33 @@ def _run_single_cmd(cmd: str) -> str:
         except Exception as e:
             return f"error querying top processes: {e}"
 
-    # 5. Process list
-    if lower_cmd in ("guardian procs", "procs", "ps", "ps aux", "ps -ef"):
+    # 5. Process list (guardian procs / procs / ps)
+    if lower_cmd in ("guardian procs", "procs", "ps"):
         try:
-            lines = [f"{'PID':>6} {'PPID':>6} {'NAME':<22} {'CPU%':>6} {'MEM(MB)':>8} {'STATUS'}"]
-            for p in list(psutil.process_iter(['pid', 'ppid', 'name', 'cpu_percent', 'memory_info', 'status']))[:30]:
+            # Check native scan first if available
+            try:
+                native = scan_one("process", "windows" if IS_WIN else "linux")
+                rows = native.get("rows", [])
+                if rows:
+                    return "\n".join(f"{r.get('pid', 0):>6} {str(r.get('name', ''))[:22]:<22} {r.get('flag', 'ok')}" for r in rows[:25])
+            except Exception:
+                pass
+
+            # Fallback to direct psutil
+            lines = [f"{'PID':>6} {'NAME':<24} {'CPU%':>6} {'MEM(MB)':>8} {'STATUS'}"]
+            for p in list(psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_info', 'status']))[:25]:
                 try:
                     info = p.info
                     mem_mb = (info['memory_info'].rss / (1024 * 1024)) if info.get('memory_info') else 0
-                    lines.append(
-                        f"{info['pid']:>6} {info.get('ppid') or 0:>6} {str(info['name'])[:22]:<22} "
-                        f"{info['cpu_percent'] or 0:>6.1f} {mem_mb:>8.1f} {info.get('status', 'running')}"
-                    )
+                    lines.append(f"{info['pid']:>6} {str(info['name'])[:24]:<24} {info['cpu_percent'] or 0:>6.1f} {mem_mb:>8.1f} {info.get('status', 'running')}")
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     continue
             return "\n".join(lines)
         except Exception as e:
             return f"error reading processes: {e}"
 
-    # 6. Inspect PID
-    if lower_cmd.startswith("guardian inspect "):
-        pid_str = cmd.split(maxsplit=2)[2].strip() if len(cmd.split()) >= 3 else ""
-        if not pid_str.isdigit():
-            return "usage: guardian inspect <pid>"
-        try:
-            p = psutil.Process(int(pid_str))
-            mem_mb = p.memory_info().rss / (1024 * 1024)
-            conns = [f"{c.laddr.ip}:{c.laddr.port} ({c.status})" for c in p.net_connections(kind='inet')[:8]]
-            return "\n".join([
-                f"PID        : {p.pid} (PPID: {p.ppid()})",
-                f"Name       : {p.name()}",
-                f"Status     : {p.status()}",
-                f"Executable : {p.exe() if hasattr(p, 'exe') else 'n/a'}",
-                f"Cmdline    : {' '.join(p.cmdline())[:180] or 'n/a'}",
-                f"Memory RSS : {mem_mb:.1f} MB",
-                f"Sockets    : {', '.join(conns) if conns else 'none'}",
-            ])
-        except Exception as e:
-            return f"inspect error for PID {pid_str}: {e}"
-
-    # 7. Ports / ss / lsof
-    if lower_cmd in ("guardian ports", "ports", "netstat", "ss", "ss -tulnp", "ss -tulpn", "lsof -i"):
+    # 6. Ports (guardian ports / ports / netstat)
+    if lower_cmd in ("guardian ports", "ports", "netstat"):
         try:
             conns = []
             for c in psutil.net_connections(kind='inet'):
@@ -270,41 +190,29 @@ def _run_single_cmd(cmd: str) -> str:
 
             if conns:
                 lines = [f"{'PROTO':<6} {'LOCAL ADDRESS':<24} {'STATE':<10} {'PID':>6} {'PROCESS'}"]
-                for proto, laddr, state, pid, name in conns[:30]:
+                for proto, laddr, state, pid, name in conns[:25]:
                     lines.append(f"{proto:<6} {laddr:<24} {state:<10} {pid:>6} {name}")
                 return "\n".join(lines)
 
+            # Fallback to runner
             res = scan_one("network", "windows" if IS_WIN else "linux")
             return "\n".join(f"{r['proto']} {r['local_port']} {r['state']} {r['process']}" for r in res.get("rows", [])) or "no listening ports detected"
         except Exception as e:
             return f"error querying network sockets: {e}"
 
-    # 8. Alerts & Ack
+    # 7. Alerts
     if lower_cmd in ("guardian alerts", "alerts"):
         with db() as c:
-            rows = c.execute("SELECT id, ts, module, severity, message, acknowledged FROM alerts ORDER BY id DESC LIMIT 15").fetchall()
+            rows = c.execute("SELECT id, ts, module, severity, message, reference FROM alerts ORDER BY id DESC LIMIT 15").fetchall()
         if not rows:
             return "no security alerts registered in database"
-        lines = [f"{'ID':>4} {'TIME':<8} {'MODULE':<12} {'SEV':<8} {'ACK':<4} {'MESSAGE'}"]
+        lines = [f"{'ID':>4} {'TIME':<8} {'MODULE':<12} {'SEV':<8} {'MESSAGE'}"]
         for r in rows:
             t_str = time.strftime('%H:%M:%S', time.localtime(r['ts'])) if r['ts'] else '--:--:--'
-            ack = "yes" if r['acknowledged'] else "no"
-            lines.append(f"{r['id']:>4} {t_str:<8} {r['module'][:12]:<12} {r['severity']:<8} {ack:<4} {r['message']}")
+            lines.append(f"{r['id']:>4} {t_str:<8} {r['module'][:12]:<12} {r['severity']:<8} {r['message']}")
         return "\n".join(lines)
 
-    if lower_cmd.startswith("guardian ack "):
-        arg = cmd.split(maxsplit=2)[2].strip().lower()
-        with db() as c:
-            if arg == "all":
-                c.execute("UPDATE alerts SET acknowledged=1 WHERE acknowledged=0")
-            elif arg.isdigit():
-                c.execute("UPDATE alerts SET acknowledged=1 WHERE id=?", (int(arg),))
-            else:
-                return "usage: guardian ack <id|all>"
-        s = record_score()
-        return f"acknowledged ({arg}). updated risk score: {s}"
-
-    # 9. Timeline
+    # 8. Timeline
     if lower_cmd in ("guardian timeline", "timeline"):
         with db() as c:
             events = c.execute("SELECT ts, module, kind, summary FROM events ORDER BY ts DESC LIMIT 15").fetchall()
@@ -312,38 +220,7 @@ def _run_single_cmd(cmd: str) -> str:
             return "no timeline events recorded"
         return "\n".join(f"[{time.strftime('%H:%M:%S', time.localtime(r['ts']))}] [{r['module']}] {r['kind']}: {r['summary']}" for r in events)
 
-    # 10. Deadlock CLI
-    if lower_cmd.startswith("guardian deadlock"):
-        parts = lower_cmd.split()
-        action = parts[2] if len(parts) > 2 else "status"
-        if action not in {"status", "create", "prevent", "resolve", "cleanup"}:
-            return "usage: guardian deadlock <status|create|prevent|resolve|cleanup>"
-        res = deadlock.run_deadlock_action(action, "windows" if IS_WIN else "linux")
-        return json.dumps(res, indent=2)
-
-    # 11. Attack Simulation CLI
-    if lower_cmd.startswith("guardian simulate"):
-        parts = lower_cmd.split()
-        action = parts[2] if len(parts) > 2 else "port"
-        src = "windows" if IS_WIN else "linux"
-        allowed = {"port", "temp", "startup", "reset"} if IS_WIN else {"port", "temp", "deleted", "file", "reset"}
-        if action not in allowed:
-            return f"usage: guardian simulate <{'|'.join(sorted(allowed))}>"
-        bash_bin = "bash"
-        p = subprocess.run([bash_bin, str(ROOT / "bash/demo" / f"{src}-lab.sh"), action], capture_output=True, text=True, timeout=20, shell=False)
-        return (p.stdout + p.stderr).strip() or f"simulation '{action}' completed (exit {p.returncode})"
-
-    # 12. Module quick audits & scan
-    if lower_cmd in ("guardian persistence", "guardian integrity", "guardian usb"):
-        mod = lower_cmd.split()[1]
-        res = scan_one(mod, "windows" if IS_WIN else "linux")
-        rows = res.get("rows", [])
-        alerts = res.get("alerts", [])
-        lines = [f"{mod.upper()} AUDIT ({res.get('source')}): {len(rows)} items, {len(alerts)} alerts"]
-        for a in alerts[:8]:
-            lines.append(f"  [{a.get('severity')}] {a.get('rule')}: {a.get('message')} (+{a.get('points')} pts)")
-        return "\n".join(lines)
-
+    # 9. Trigger scan
     if lower_cmd.startswith("guardian scan ") or lower_cmd.startswith("scan "):
         parts = lower_cmd.split()
         target_mod = parts[2] if lower_cmd.startswith("guardian scan ") and len(parts) > 2 else (parts[1] if len(parts) > 1 else "system")
@@ -355,20 +232,14 @@ def _run_single_cmd(cmd: str) -> str:
         except Exception as e:
             return f"scan error: {e}"
 
-    # 13. Linux / Bash core utilities
-    if lower_cmd in ("whoami", "id"):
-        user = getpass.getuser()
-        if lower_cmd == "id":
-            return f"uid=1000({user}) gid=1000({user}) groups=1000({user}),guardian-soc"
-        return f"{user} (host: {platform.node()})"
-
-    if lower_cmd == "hostname":
-        return platform.node()
+    # 10. Shell utilities
+    if lower_cmd == "whoami":
+        return f"{getpass.getuser()} (host: {platform.node()})"
 
     if lower_cmd == "pwd":
         return os.getcwd()
 
-    if lower_cmd in ("ls", "ls -la", "ls -l", "dir"):
+    if lower_cmd in ("ls", "dir"):
         try:
             items = os.listdir(os.getcwd())
             lines = [f"{'PERM':<10} {'SIZE':>10}  {'MODIFIED':<19}  {'NAME'}"]
@@ -400,18 +271,19 @@ def _run_single_cmd(cmd: str) -> str:
     if lower_cmd == "date":
         return datetime.datetime.now().strftime("%a %b %d %H:%M:%S %Z %Y")
 
-    if lower_cmd in ("free", "free -m", "free -h", "mem"):
+    if lower_cmd in ("free", "mem"):
         vm = psutil.virtual_memory()
         swap = psutil.swap_memory()
-        return "\n".join([
+        lines = [
             f"{'':<12} {'TOTAL':>12} {'USED':>12} {'FREE':>12} {'PERCENT':>10}",
             f"{'Mem:':<12} {format_bytes(vm.total):>12} {format_bytes(vm.used):>12} {format_bytes(vm.available):>12} {vm.percent:>9.1f}%",
-            f"{'Swap:':<12} {format_bytes(swap.total):>12} {format_bytes(swap.used):>12} {format_bytes(swap.free):>12} {swap.percent:>9.1f}%",
-        ])
+            f"{'Swap:':<12} {format_bytes(swap.total):>12} {format_bytes(swap.used):>12} {format_bytes(swap.free):>12} {swap.percent:>9.1f}%"
+        ]
+        return "\n".join(lines)
 
-    if lower_cmd in ("df", "df -h", "disk"):
+    if lower_cmd in ("df", "disk"):
         lines = [f"{'FILESYSTEM':<20} {'TOTAL':>10} {'USED':>10} {'FREE':>10} {'USE%':>6} {'MOUNT'}"]
-        for part in psutil.disk_partitions(all=False)[:8]:
+        for part in psutil.disk_partitions(all=False)[:6]:
             try:
                 usage = psutil.disk_usage(part.mountpoint)
                 lines.append(f"{part.device[:20]:<20} {format_bytes(usage.total):>10} {format_bytes(usage.used):>10} {format_bytes(usage.free):>10} {usage.percent:>5.1f}% {part.mountpoint}")
@@ -429,16 +301,6 @@ def _run_single_cmd(cmd: str) -> str:
                 lines.append(f"  {family_str:<6} : {a.address} (netmask: {a.netmask})")
         return "\n".join(lines) if lines else "no network interfaces found"
 
-    if lower_cmd == "env":
-        safe_keys = ("OS", "USERNAME", "USER", "HOME", "SHELL", "PWD", "PATH", "PROCESSOR_ARCHITECTURE")
-        return "\n".join(f"{k}={os.environ.get(k)}" for k in safe_keys if os.environ.get(k))
-
-    if lower_cmd.startswith("which "):
-        target = cmd.split(maxsplit=1)[1].strip()
-        if target in {"guardian", "ps", "ss", "lsof", "ls", "cat", "grep", "head", "tail", "wc", "sort", "uniq", "uname", "free", "df"}:
-            return f"/usr/bin/{target}"
-        return f"{target} not found"
-
     if lower_cmd.startswith("echo "):
         return cmd[5:]
 
@@ -447,6 +309,7 @@ def _run_single_cmd(cmd: str) -> str:
         try:
             p = (Path(os.getcwd()) / target).resolve()
             root_res = ROOT.resolve()
+            # Path traversal prevention: strictly confined to project root
             if root_res not in p.parents and p != root_res:
                 return f"cat: permission denied: '{target}' is outside project root"
         except Exception:
@@ -465,41 +328,11 @@ def _run_single_cmd(cmd: str) -> str:
     if lower_cmd == "clear":
         return "\x1b[2J\x1b[H"
 
-    return None
-
-
-def term_cmd(raw_cmd):
-    cmd = " ".join(raw_cmd.strip().split())
-    if not cmd:
-        return ""
-
-    lower_cmd = cmd.lower()
-
-    # Safety check: block destructive commands and log refusal
-    for bad in DANGEROUS_SUBSTRINGS:
-        if bad in lower_cmd or lower_cmd == bad.strip():
-            LOG.parent.mkdir(parents=True, exist_ok=True)
-            with LOG.open("a", encoding="utf-8") as f:
-                f.write(f"{int(time.time())} REFUSED {cmd}\n")
-            return f"refused: '{cmd}' is not allowed (read-only safe terminal)"
-
-    # Split into Bash pipeline stages on '|'
-    stages = [s.strip() for s in cmd.split("|") if s.strip()]
-    if not stages:
-        return ""
-
-    out = _run_single_cmd(stages[0])
-    if out is None:
-        LOG.parent.mkdir(parents=True, exist_ok=True)
-        with LOG.open("a", encoding="utf-8") as f:
-            f.write(f"{int(time.time())} REFUSED {cmd}\n")
-        return f"refused: '{cmd}' is not allowed (read-only safe shell). Type 'help' for available commands."
-
-    for stage in stages[1:]:
-        out = _apply_pipe_filter(out, stage)
-
-    return out
-
+    # Any unknown command: log and return helpful message
+    LOG.parent.mkdir(parents=True, exist_ok=True)
+    with LOG.open("a", encoding="utf-8") as f:
+        f.write(f"{int(time.time())} REFUSED {cmd}\n")
+    return f"refused: '{cmd}' is not allowed (read-only safe shell). Type 'help' for available commands."
 
 async def terminal_ws(ws: WebSocket):
     await ws.accept()
