@@ -17,6 +17,7 @@ import {
 import { saveBaseline, toCsv } from '../api'
 import { useScan } from '../hooks/useScan'
 import { Badge, Btn, Card } from '../components/ui'
+import ProcessTreeGraph from '../components/ProcessTreeGraph'
 
 // ── Tree flattening ─────────────────────────────────────────────────────────
 const flat = (rows, open) => {
@@ -455,34 +456,52 @@ export default function Process({ src }) {
       {/* Top CPU and RAM */}
       {all.length > 0 && <Top rows={all} />}
 
-      {/* Main content: table + detail panel */}
+      {/* Main content: table or visual tree + detail panel */}
       {all.length > 0 && (
         <div className="two" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 12, alignItems: 'start' }}>
-          {/* Custom table with friendly columns */}
-          <div className="table-wrapper">
-            <div className="scroll">
-              <table>
-                <thead>
-                  <tr>
-                    {COLS.map(c => <th key={c.key}>{c.label}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {view.map((r, i) => (
-                    <tr
-                      key={i}
-                      className={'click ' + (sel && r.source + r.pid === sel.source + sel.pid ? 'sel' : '')}
-                      onClick={() => click(r)}
-                    >
-                      {COLS.map(c => (
-                        <td key={c.key}>{renderCell(c.key, r)}</td>
-                      ))}
+          {tree ? (
+            <ProcessTreeGraph
+              rows={rows}
+              openSet={open}
+              selected={sel}
+              onSelect={r => setSel(byKey.get(r.source + r.pid) || r)}
+              onToggle={k =>
+                setOpen(o => {
+                  const n = new Set(o)
+                  if (n.has(k)) n.delete(k)
+                  else n.add(k)
+                  return n
+                })
+              }
+              onExpandAll={() => setOpen(new Set(all.map(r => r.source + r.ppid)))}
+              onCollapseAll={() => setOpen(new Set())}
+            />
+          ) : (
+            <div className="table-wrapper">
+              <div className="scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      {COLS.map(c => <th key={c.key}>{c.label}</th>)}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {view.map((r, i) => (
+                      <tr
+                        key={i}
+                        className={'click ' + (sel && r.source + r.pid === sel.source + sel.pid ? 'sel' : '')}
+                        onClick={() => click(r)}
+                      >
+                        {COLS.map(c => (
+                          <td key={c.key}>{renderCell(c.key, r)}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Detail panel */}
           <Card title="Process Details">
