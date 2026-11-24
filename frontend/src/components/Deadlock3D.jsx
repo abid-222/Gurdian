@@ -1,133 +1,239 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Rotate3d, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
+import { Rotate3d, Maximize2, Layers, Box } from 'lucide-react'
 
-// True 3D Mathematical Projection Engine for Resource Allocation Graph (RAG)
+const MODE_THEME = {
+  idle: {
+    bgGlow: 'rgba(56, 189, 248, 0.12)',
+    bannerBg: 'rgba(56, 189, 248, 0.12)',
+    bannerBorder: 'rgba(56, 189, 248, 0.35)',
+    bannerColor: '#38bdf8',
+    bannerText: 'SYSTEM IDLE — Processes & Mutex Locks Ready for Simulation',
+  },
+  deadlock: {
+    bgGlow: 'rgba(244, 63, 94, 0.18)',
+    bannerBg: 'rgba(244, 63, 94, 0.16)',
+    bannerBorder: 'rgba(244, 63, 94, 0.50)',
+    bannerColor: '#fb7185',
+    bannerText: 'CIRCULAR WAIT DEADLOCK — Mutual Hold & Wait Cycle Detected!',
+  },
+  prevented: {
+    bgGlow: 'rgba(16, 185, 129, 0.16)',
+    bannerBg: 'rgba(16, 185, 129, 0.14)',
+    bannerBorder: 'rgba(16, 185, 129, 0.45)',
+    bannerColor: '#34d399',
+    bannerText: 'DEADLOCK PREVENTED — Strict Lock Hierarchy F(R_1) < F(R_2) < ... Enforced',
+  },
+  resolved: {
+    bgGlow: 'rgba(245, 158, 11, 0.14)',
+    bannerBg: 'rgba(245, 158, 11, 0.15)',
+    bannerBorder: 'rgba(245, 158, 11, 0.45)',
+    bannerColor: '#fbbf24',
+    bannerText: 'DEADLOCK BROKEN — Victim Preempted, Resources Freed for Survivor',
+  },
+}
+
+// Interactive 3D / 2.5D Resource Allocation Graph (RAG) — supports OS Kernel & Custom PC Sandbox
 export default function Deadlock3D({
   mode = 'idle', // 'idle' | 'deadlock' | 'prevented' | 'resolved'
   p1State = null,
   p2State = null,
   cycle = null,
+  customNodes = null, // Optional: [{ id, short, type: 'process'|'resource', label, sub }]
+  customEdges = null, // Optional: [{ from, to, kind: 'hold'|'wait'|'order'|'idle', label }]
   className = '',
-  height = 420
+  height = 460,
 }) {
   const canvasRef = useRef(null)
   const animRef = useRef(null)
+  const [isFlat2D, setIsFlat2D] = useState(false)
 
-  // Camera 3D Orbit state
   const cameraRef = useRef({
-    theta: 0.75, // Horizontal azimuth (radians)
-    phi: 0.45,   // Elevation angle (radians)
-    dist: 380,   // Distance from origin
+    theta: 0.0,
+    phi: 0.34,
+    dist: 410,
     isDragging: false,
     lastX: 0,
-    lastY: 0
+    lastY: 0,
   })
 
-  const [cameraDisplay, setCameraDisplay] = useState({ theta: 43, phi: 26 })
+  const [cameraDisplay, setCameraDisplay] = useState({ theta: 0, phi: 20 })
 
-  // 3D Nodes Definition
-  // Coordinates in 3D world space (X: left/right, Y: up/down, Z: forward/back)
+  const toggleViewMode = () => {
+    setIsFlat2D(prev => {
+      const next = !prev
+      if (next) {
+        cameraRef.current.theta = 0
+        cameraRef.current.phi = 0
+        cameraRef.current.dist = 390
+        setCameraDisplay({ theta: 0, phi: 0 })
+      } else {
+        cameraRef.current.theta = 0
+        cameraRef.current.phi = 0.34
+        cameraRef.current.dist = 410
+        setCameraDisplay({ theta: 0, phi: 20 })
+      }
+      return next
+    })
+  }
+
   const getNodes = useCallback(() => {
     const isDeadlock = mode === 'deadlock'
     const isPrevented = mode === 'prevented'
     const isResolved = mode === 'resolved'
+    const cycleSet = new Set(Array.isArray(cycle) ? cycle : [])
 
+    // Dynamic layout when customNodes are provided (Real PC / Custom Builder mode)
+    if (Array.isArray(customNodes) && customNodes.length > 0) {
+      const procs = customNodes.filter(n => n.type === 'process')
+      const ress = customNodes.filter(n => n.type === 'resource')
+
+      const positioned = []
+      const pCount = Math.max(procs.length, 1)
+      procs.forEach((p, idx) => {
+        const angle = (idx / pCount) * Math.PI * 2 - Math.PI / 2
+        const rx = procs.length <= 2 ? (idx === 0 ? -145 : 145) : Math.cos(angle) * 165
+        const rz = procs.length <= 2 ? 0 : Math.sin(angle) * 95
+        const ry = procs.length <= 2 ? 10 : Math.sin(angle) * 35
+        const inCycle = cycleSet.has(p.id)
+        positioned.push({
+          ...p,
+          x: rx,
+          y: ry,
+          z: rz,
+          color: inCycle ? '#f43f5e' : isPrevented ? '#10b981' : isResolved && p.preempted ? '#94a3b8' : '#38bdf8',
+          glow: inCycle ? 'rgba(244, 63, 94, 0.6)' : isPrevented ? 'rgba(16, 185, 129, 0.5)' : 'rgba(56, 189, 248, 0.45)',
+          isCycle: inCycle,
+        })
+      })
+
+      const rCount = Math.max(ress.length, 1)
+      ress.forEach((r, idx) => {
+        const rx = ress.length === 1 ? 0 : (idx - (rCount - 1) / 2) * 120
+        const ry = idx % 2 === 0 ? 105 : -90
+        const rz = idx % 2 === 0 ? -45 : 45
+        const inCycle = cycleSet.has(r.id)
+        positioned.push({
+          ...r,
+          x: rx,
+          y: ry,
+          z: rz,
+          color: inCycle ? '#f59e0b' : isPrevented ? '#10b981' : '#a78bfa',
+          glow: inCycle ? 'rgba(245, 158, 11, 0.55)' : isPrevented ? 'rgba(16, 185, 129, 0.45)' : 'rgba(167, 139, 250, 0.45)',
+          isCycle: inCycle,
+        })
+      })
+
+      return positioned
+    }
+
+    // Default OS Kernel Lab 4-node layout
     return [
       {
         id: 'P1',
+        short: 'P1',
         type: 'process',
-        label: p1State?.pid ? `P1 (PID ${p1State.pid})` : 'Process P1',
-        sub: p1State?.state || (isDeadlock ? 'BLOCKED' : isPrevented ? 'COMPLETED' : 'IDLE'),
-        x: -120,
-        y: 40,
+        label: p1State?.pid ? `P1 · PID ${p1State.pid}` : 'Process P1',
+        sub: p1State?.state || (isDeadlock ? 'BLOCKED (Waiting R_B)' : isPrevented ? 'COMPLETED' : isResolved ? 'UNBLOCKED & DONE' : 'READY'),
+        x: -140,
+        y: 10,
         z: 0,
-        color: isDeadlock ? '#f43f5e' : isPrevented ? '#10b981' : isResolved ? '#10b981' : '#3b82f6',
-        isCycle: isDeadlock
+        color: isDeadlock ? '#f43f5e' : isPrevented || isResolved ? '#10b981' : '#38bdf8',
+        glow: isDeadlock ? 'rgba(244, 63, 94, 0.55)' : isPrevented || isResolved ? 'rgba(16, 185, 129, 0.5)' : 'rgba(56, 189, 248, 0.45)',
+        isCycle: isDeadlock,
       },
       {
         id: 'P2',
+        short: 'P2',
         type: 'process',
-        label: p2State?.pid ? `P2 (PID ${p2State.pid})` : 'Process P2',
-        sub: p2State?.state || (isDeadlock ? 'BLOCKED' : isPrevented ? 'COMPLETED' : isResolved ? 'PREEMPTED' : 'IDLE'),
-        x: 120,
-        y: 40,
+        label: p2State?.pid ? `P2 · PID ${p2State.pid}` : 'Process P2',
+        sub: p2State?.state || (isDeadlock ? 'BLOCKED (Waiting R_A)' : isPrevented ? 'COMPLETED' : isResolved ? 'PREEMPTED (KILLED)' : 'READY'),
+        x: 140,
+        y: 10,
         z: 0,
-        color: isDeadlock ? '#f43f5e' : isPrevented ? '#10b981' : isResolved ? '#64748b' : '#3b82f6',
-        isCycle: isDeadlock
+        color: isDeadlock ? '#f43f5e' : isPrevented ? '#10b981' : isResolved ? '#94a3b8' : '#38bdf8',
+        glow: isDeadlock ? 'rgba(244, 63, 94, 0.55)' : isPrevented ? 'rgba(16, 185, 129, 0.5)' : isResolved ? 'rgba(148, 163, 184, 0.25)' : 'rgba(56, 189, 248, 0.45)',
+        isCycle: isDeadlock,
       },
       {
         id: 'RA',
+        short: 'R_A',
         type: 'resource',
-        label: 'Resource R_A',
-        sub: 'Lock fd:200 (/tmp)',
+        label: isPrevented ? 'Resource R_A (Rank #1)' : 'Resource R_A',
+        sub: 'flock fd:200 · /tmp',
         x: 0,
-        y: 110,
-        z: -90,
-        color: isDeadlock ? '#f59e0b' : isPrevented ? '#10b981' : '#0ea5e9',
-        isCycle: isDeadlock
+        y: 100,
+        z: -55,
+        color: isDeadlock ? '#f59e0b' : isPrevented ? '#10b981' : '#a78bfa',
+        glow: isDeadlock ? 'rgba(245, 158, 11, 0.5)' : isPrevented ? 'rgba(16, 185, 129, 0.45)' : 'rgba(167, 139, 250, 0.45)',
+        isCycle: isDeadlock,
       },
       {
         id: 'RB',
+        short: 'R_B',
         type: 'resource',
-        label: 'Resource R_B',
-        sub: 'Lock fd:201 (/tmp)',
+        label: isPrevented ? 'Resource R_B (Rank #2)' : 'Resource R_B',
+        sub: 'flock fd:201 · /tmp',
         x: 0,
-        y: -30,
-        z: 90,
-        color: isDeadlock ? '#f59e0b' : isPrevented ? '#10b981' : '#0ea5e9',
-        isCycle: isDeadlock
-      }
+        y: -80,
+        z: 55,
+        color: isDeadlock ? '#f59e0b' : isPrevented ? '#10b981' : '#a78bfa',
+        glow: isDeadlock ? 'rgba(245, 158, 11, 0.5)' : isPrevented ? 'rgba(16, 185, 129, 0.45)' : 'rgba(167, 139, 250, 0.45)',
+        isCycle: isDeadlock,
+      },
     ]
-  }, [mode, p1State, p2State])
+  }, [mode, p1State, p2State, customNodes, cycle])
 
-  // Directed edges (Allocated: Res -> Proc, Requested: Proc -> Res)
   const getEdges = useCallback(() => {
+    if (Array.isArray(customEdges)) {
+      return customEdges
+    }
     if (mode === 'deadlock') {
       return [
-        { from: 'RA', to: 'P1', kind: 'hold', label: 'Allocated (flock)' },
-        { from: 'P1', to: 'RB', kind: 'wait', label: 'Waiting (Blocked)' },
-        { from: 'RB', to: 'P2', kind: 'hold', label: 'Allocated (flock)' },
-        { from: 'P2', to: 'RA', kind: 'wait', label: 'Waiting (Blocked)' }
+        { from: 'RA', to: 'P1', kind: 'hold', label: 'HOLDS R_A' },
+        { from: 'P1', to: 'RB', kind: 'wait', label: 'WAITS FOR R_B' },
+        { from: 'RB', to: 'P2', kind: 'hold', label: 'HOLDS R_B' },
+        { from: 'P2', to: 'RA', kind: 'wait', label: 'WAITS FOR R_A' },
       ]
     }
     if (mode === 'prevented') {
       return [
-        { from: 'RA', to: 'P1', kind: 'hold', label: 'Rank 1 Acquired' },
-        { from: 'RB', to: 'P1', kind: 'hold', label: 'Rank 2 Acquired' }
+        { from: 'RA', to: 'P1', kind: 'hold', label: '1st: Rank #1' },
+        { from: 'RB', to: 'P1', kind: 'hold', label: '2nd: Rank #2' },
+        { from: 'RA', to: 'P2', kind: 'order', label: 'Ordered Safe' },
       ]
     }
     if (mode === 'resolved') {
       return [
-        { from: 'RA', to: 'P1', kind: 'hold', label: 'Acquired' },
-        { from: 'RB', to: 'P1', kind: 'hold', label: 'Acquired (Preempted from P2)' }
+        { from: 'RA', to: 'P1', kind: 'hold', label: 'ACQUIRED' },
+        { from: 'RB', to: 'P1', kind: 'hold', label: 'PREEMPTED -> P1' },
       ]
     }
     return [
-      { from: 'P1', to: 'RA', kind: 'idle', label: 'Available' },
-      { from: 'P2', to: 'RB', kind: 'idle', label: 'Available' }
+      { from: 'P1', to: 'RA', kind: 'idle', label: 'Can Request' },
+      { from: 'P2', to: 'RB', kind: 'idle', label: 'Can Request' },
     ]
-  }, [mode])
+  }, [mode, customEdges])
 
-  // Mouse interaction handlers for 3D Orbit
   const handleMouseDown = e => {
+    if (isFlat2D) return
     cameraRef.current.isDragging = true
     cameraRef.current.lastX = e.clientX
     cameraRef.current.lastY = e.clientY
   }
 
   const handleMouseMove = e => {
-    if (!cameraRef.current.isDragging) return
+    if (!cameraRef.current.isDragging || isFlat2D) return
     const dx = e.clientX - cameraRef.current.lastX
     const dy = e.clientY - cameraRef.current.lastY
     cameraRef.current.lastX = e.clientX
     cameraRef.current.lastY = e.clientY
 
     cameraRef.current.theta += dx * 0.008
-    cameraRef.current.phi = Math.max(-0.2, Math.min(1.4, cameraRef.current.phi - dy * 0.008))
+    cameraRef.current.phi = Math.max(-0.35, Math.min(1.2, cameraRef.current.phi - dy * 0.008))
 
     setCameraDisplay({
       theta: Math.round(((cameraRef.current.theta * 180) / Math.PI) % 360),
-      phi: Math.round((cameraRef.current.phi * 180) / Math.PI)
+      phi: Math.round((cameraRef.current.phi * 180) / Math.PI),
     })
   }
 
@@ -137,17 +243,17 @@ export default function Deadlock3D({
 
   const handleWheel = e => {
     e.preventDefault()
-    cameraRef.current.dist = Math.max(200, Math.min(650, cameraRef.current.dist + e.deltaY * 0.4))
+    cameraRef.current.dist = Math.max(240, Math.min(640, cameraRef.current.dist + e.deltaY * 0.35))
   }
 
   const resetView = () => {
-    cameraRef.current.theta = 0.75
-    cameraRef.current.phi = 0.45
-    cameraRef.current.dist = 380
-    setCameraDisplay({ theta: 43, phi: 26 })
+    setIsFlat2D(false)
+    cameraRef.current.theta = 0.0
+    cameraRef.current.phi = 0.34
+    cameraRef.current.dist = 410
+    setCameraDisplay({ theta: 0, phi: 20 })
   }
 
-  // Main 3D Canvas Rendering Loop
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -155,76 +261,80 @@ export default function Deadlock3D({
     if (!ctx) return
     let frame = 0
 
+    const theme = MODE_THEME[mode] || MODE_THEME.idle
+
     const render = () => {
       frame++
       const width = canvas.clientWidth
-      const height = canvas.clientHeight
-      if (canvas.width !== width || canvas.height !== height) {
+      const heightVal = canvas.clientHeight
+      if (canvas.width !== width || canvas.height !== heightVal) {
         canvas.width = width
-        canvas.height = height
+        canvas.height = heightVal
       }
 
-      ctx.clearRect(0, 0, width, height)
+      ctx.clearRect(0, 0, width, heightVal)
 
-      // Perspective Projection Setup
+      const bgGrad = ctx.createRadialGradient(
+        width / 2,
+        heightVal / 2,
+        24,
+        width / 2,
+        heightVal / 2,
+        Math.max(width, heightVal) * 0.65
+      )
+      bgGrad.addColorStop(0, theme.bgGlow)
+      bgGrad.addColorStop(1, 'rgba(10, 11, 16, 0)')
+      ctx.fillStyle = bgGrad
+      ctx.fillRect(0, 0, width, heightVal)
+
       const cx = width / 2
-      const cy = height / 2 + 15
-      const fov = 340
+      const cy = heightVal / 2 + 12
+      const fov = 365
       const cam = cameraRef.current
 
-      // Camera Trigonometry
       const cosT = Math.cos(cam.theta)
       const sinT = Math.sin(cam.theta)
       const cosP = Math.cos(cam.phi)
       const sinP = Math.sin(cam.phi)
 
-      // 3D Transform Function (World -> Camera View -> 2D Screen)
       const project3D = (x, y, z) => {
-        // Rotate around Y-axis (theta)
         const x1 = x * cosT - z * sinT
         const z1 = x * sinT + z * cosT
-
-        // Rotate around X-axis (phi)
         const y2 = y * cosP - z1 * sinP
         const z2 = y * sinP + z1 * cosP + cam.dist
-
-        if (z2 <= 20) return null // Behind camera
-
+        if (z2 <= 30) return null
         const scale = fov / z2
-        const screenX = cx + x1 * scale
-        const screenY = cy - y2 * scale
-
-        return { x: screenX, y: screenY, z: z2, scale }
+        return { x: cx + x1 * scale, y: cy - y2 * scale, z: z2, scale }
       }
 
-      // 1. Draw 3D Isometric Grid Floor
-      ctx.lineWidth = 1
-      const gridSize = 160
-      const gridStep = 40
-      for (let gx = -gridSize; gx <= gridSize; gx += gridStep) {
-        const pA = project3D(gx, -70, -gridSize)
-        const pB = project3D(gx, -70, gridSize)
-        if (pA && pB) {
-          ctx.beginPath()
-          ctx.moveTo(pA.x, pA.y)
-          ctx.lineTo(pB.x, pB.y)
-          ctx.strokeStyle = gx === 0 ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.03)'
-          ctx.stroke()
+      if (!isFlat2D) {
+        ctx.lineWidth = 1
+        const gridSize = 180
+        const gridStep = 45
+        for (let gx = -gridSize; gx <= gridSize; gx += gridStep) {
+          const pA = project3D(gx, -115, -gridSize)
+          const pB = project3D(gx, -115, gridSize)
+          if (pA && pB) {
+            ctx.beginPath()
+            ctx.moveTo(pA.x, pA.y)
+            ctx.lineTo(pB.x, pB.y)
+            ctx.strokeStyle = gx === 0 ? 'rgba(255, 255, 255, 0.11)' : 'rgba(255, 255, 255, 0.035)'
+            ctx.stroke()
+          }
+        }
+        for (let gz = -gridSize; gz <= gridSize; gz += gridStep) {
+          const pA = project3D(-gridSize, -115, gz)
+          const pB = project3D(gridSize, -115, gz)
+          if (pA && pB) {
+            ctx.beginPath()
+            ctx.moveTo(pA.x, pA.y)
+            ctx.lineTo(pB.x, pB.y)
+            ctx.strokeStyle = gz === 0 ? 'rgba(255, 255, 255, 0.11)' : 'rgba(255, 255, 255, 0.035)'
+            ctx.stroke()
+          }
         }
       }
-      for (let gz = -gridSize; gz <= gridSize; gz += gridStep) {
-        const pA = project3D(-gridSize, -70, gz)
-        const pB = project3D(gridSize, -70, gz)
-        if (pA && pB) {
-          ctx.beginPath()
-          ctx.moveTo(pA.x, pA.y)
-          ctx.lineTo(pB.x, pB.y)
-          ctx.strokeStyle = gz === 0 ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.03)'
-          ctx.stroke()
-        }
-      }
 
-      // Collect Projected Nodes
       const nodes = getNodes()
       const edges = getEdges()
       const nodeMap = {}
@@ -236,7 +346,6 @@ export default function Deadlock3D({
         return item
       })
 
-      // 2. Draw 3D Directed Edges
       edges.forEach((edge, eIdx) => {
         const source = nodeMap[edge.from]
         const target = nodeMap[edge.to]
@@ -245,185 +354,182 @@ export default function Deadlock3D({
         const pA = source.proj
         const pB = target.proj
 
-        const isCycleEdge = mode === 'deadlock'
-        const isHold = edge.kind === 'hold'
         const isWait = edge.kind === 'wait'
+        const isHold = edge.kind === 'hold'
+        const isOrder = edge.kind === 'order'
 
-        // Color & Pulse
-        let strokeColor = 'rgba(255, 255, 255, 0.15)'
-        if (isWait) strokeColor = isCycleEdge ? '#f43f5e' : '#f59e0b'
+        let strokeColor = 'rgba(148, 163, 184, 0.5)'
+        if (isWait) strokeColor = '#f43f5e'
         else if (isHold) strokeColor = '#10b981'
+        else if (isOrder) strokeColor = '#38bdf8'
 
-        // Base Arc Line
+        const dx = pB.x - pA.x
+        const dy = pB.y - pA.y
+        const len = Math.hypot(dx, dy) || 1
+        const nx = -dy / len
+        const ny = dx / len
+        const curveOffset = isWait ? 30 : isHold ? -22 : 16
+        const midX = (pA.x + pB.x) / 2 + nx * curveOffset
+        const midY = (pA.y + pB.y) / 2 + ny * curveOffset
+
+        ctx.save()
         ctx.beginPath()
         ctx.moveTo(pA.x, pA.y)
-
-        // Arc curve control point in 3D mid-height
-        const midX = (pA.x + pB.x) / 2
-        const midY = (pA.y + pB.y) / 2 - (isWait ? 20 : -10)
         ctx.quadraticCurveTo(midX, midY, pB.x, pB.y)
-
         ctx.strokeStyle = strokeColor
-        ctx.lineWidth = isCycleEdge && isWait ? 2.5 : 1.8
-        if (isCycleEdge && isWait) {
-          ctx.shadowColor = '#f43f5e'
-          ctx.shadowBlur = 10
-        } else {
-          ctx.shadowBlur = 0
+        ctx.lineWidth = isWait ? 3.2 : isHold ? 2.6 : 1.8
+        if (isWait) {
+          ctx.setLineDash([8, 6])
+          ctx.lineDashOffset = -frame * 0.65
         }
+        ctx.shadowColor = strokeColor
+        ctx.shadowBlur = isWait ? 12 : isHold ? 8 : 0
         ctx.stroke()
-        ctx.shadowBlur = 0
+        ctx.restore()
 
-        // Animated particles along the vector beam
-        const particleCount = isCycleEdge ? 4 : 2
-        for (let i = 0; i < particleCount; i++) {
-          const t = ((frame * 0.015 + (i / particleCount) + (eIdx * 0.25)) % 1)
-          // Quadratic bezier point: B(t) = (1-t)^2 P0 + 2(1-t)t P1 + t^2 P2
+        const packetCount = isWait ? 3 : 2
+        for (let i = 0; i < packetCount; i++) {
+          const t = (frame * 0.012 + i / packetCount + eIdx * 0.2) % 1
           const inv = 1 - t
           const px = inv * inv * pA.x + 2 * inv * t * midX + t * t * pB.x
           const py = inv * inv * pA.y + 2 * inv * t * midY + t * t * pB.y
 
           ctx.beginPath()
-          ctx.arc(px, py, isCycleEdge ? 3.5 : 2.5, 0, Math.PI * 2)
-          ctx.fillStyle = isCycleEdge ? (isWait ? '#f43f5e' : '#10b981') : (isHold ? '#10b981' : '#f59e0b')
+          ctx.arc(px, py, isWait ? 4.2 : 3.2, 0, Math.PI * 2)
+          ctx.fillStyle = '#ffffff'
+          ctx.shadowColor = strokeColor
+          ctx.shadowBlur = 10
           ctx.fill()
+          ctx.shadowBlur = 0
         }
 
-        // Draw directional arrowhead near target
-        const arrowT = 0.88
+        const targetRadius = (target.type === 'process' ? 28 : 24) * pB.scale
+        const arrowT = Math.max(0.65, 1 - (targetRadius + 8) / len)
         const invA = 1 - arrowT
         const arrowX = invA * invA * pA.x + 2 * invA * arrowT * midX + arrowT * arrowT * pB.x
         const arrowY = invA * invA * pA.y + 2 * invA * arrowT * midY + arrowT * arrowT * pB.y
-        const angle = Math.atan2(pB.y - midY, pB.x - midX)
+        const tx = 2 * invA * (midX - pA.x) + 2 * arrowT * (pB.x - midX)
+        const ty = 2 * invA * (midY - pA.y) + 2 * arrowT * (pB.y - midY)
+        const angle = Math.atan2(ty, tx)
 
         ctx.beginPath()
         ctx.moveTo(arrowX, arrowY)
-        ctx.lineTo(
-          arrowX - 8 * Math.cos(angle - Math.PI / 6),
-          arrowY - 8 * Math.sin(angle - Math.PI / 6)
-        )
-        ctx.lineTo(
-          arrowX - 8 * Math.cos(angle + Math.PI / 6),
-          arrowY - 8 * Math.sin(angle + Math.PI / 6)
-        )
+        ctx.lineTo(arrowX - 11 * Math.cos(angle - Math.PI / 6), arrowY - 11 * Math.sin(angle - Math.PI / 6))
+        ctx.lineTo(arrowX - 11 * Math.cos(angle + Math.PI / 6), arrowY - 11 * Math.sin(angle + Math.PI / 6))
         ctx.closePath()
         ctx.fillStyle = strokeColor
         ctx.fill()
+
+        if (edge.label) {
+          const lx = 0.25 * pA.x + 0.5 * midX + 0.25 * pB.x
+          const ly = 0.25 * pA.y + 0.5 * midY + 0.25 * pB.y
+          ctx.font = '600 10px "JetBrains Mono", monospace'
+          const tw = ctx.measureText(edge.label).width
+          ctx.fillStyle = 'rgba(13, 15, 22, 0.92)'
+          ctx.strokeStyle = strokeColor
+          ctx.lineWidth = 1
+          ctx.beginPath()
+          ctx.roundRect(lx - tw / 2 - 7, ly - 9, tw + 14, 18, 9)
+          ctx.fill()
+          ctx.stroke()
+          ctx.fillStyle = strokeColor
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          ctx.fillText(edge.label, lx, ly)
+          ctx.textBaseline = 'alphabetic'
+        }
       })
 
-      // 3. Draw 3D Nodes sorted by depth (Z-buffer)
-      const sortedNodes = [...projectedNodes].filter(n => n.proj !== null).sort((a, b) => b.proj.z - a.proj.z)
+      const sortedNodes = [...projectedNodes]
+        .filter(n => n.proj !== null)
+        .sort((a, b) => b.proj.z - a.proj.z)
 
       sortedNodes.forEach(n => {
         const { x, y, scale } = n.proj
         const isProcess = n.type === 'process'
-        const radius = (isProcess ? 24 : 20) * scale
+        const radius = (isProcess ? 28 : 24) * scale
 
-        // Drop shadow onto grid floor
-        const floorProj = project3D(n.x, -70, n.z)
-        if (floorProj) {
-          ctx.beginPath()
-          ctx.ellipse(floorProj.x, floorProj.y, radius * 0.9, radius * 0.45, 0, 0, Math.PI * 2)
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'
-          ctx.fill()
+        if (!isFlat2D) {
+          const floorProj = project3D(n.x, -115, n.z)
+          if (floorProj) {
+            ctx.beginPath()
+            ctx.ellipse(floorProj.x, floorProj.y, radius * 0.85, radius * 0.36, 0, 0, Math.PI * 2)
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'
+            ctx.fill()
 
-          // Ground connector stalk
-          ctx.beginPath()
-          ctx.moveTo(x, y + radius)
-          ctx.lineTo(floorProj.x, floorProj.y)
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)'
-          ctx.lineWidth = 1
-          ctx.setLineDash([2, 4])
-          ctx.stroke()
-          ctx.setLineDash([])
+            ctx.beginPath()
+            ctx.moveTo(x, y + radius)
+            ctx.lineTo(floorProj.x, floorProj.y)
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)'
+            ctx.lineWidth = 1
+            ctx.setLineDash([3, 4])
+            ctx.stroke()
+            ctx.setLineDash([])
+          }
         }
 
-        // Cycle Halo Glow for Deadlocked Nodes
         if (n.isCycle) {
-          const pulse = Math.sin(frame * 0.08) * 4
+          const pulse = Math.sin(frame * 0.08) * 5
           ctx.beginPath()
-          ctx.arc(x, y, radius + 8 + pulse, 0, Math.PI * 2)
-          ctx.strokeStyle = 'rgba(244, 63, 94, 0.4)'
-          ctx.lineWidth = 2
+          ctx.arc(x, y, radius + 10 + pulse, 0, Math.PI * 2)
+          ctx.strokeStyle = 'rgba(244, 63, 94, 0.5)'
+          ctx.lineWidth = 2.5
           ctx.stroke()
         }
 
-        // Draw 3D Node Body
-        ctx.beginPath()
+        ctx.save()
+        ctx.shadowColor = n.glow
+        ctx.shadowBlur = 18
+
         if (isProcess) {
-          // Circular 3D Cylinder / Hexagon Process
+          ctx.beginPath()
           ctx.arc(x, y, radius, 0, Math.PI * 2)
+          const grad = ctx.createRadialGradient(
+            x - radius * 0.35,
+            y - radius * 0.35,
+            radius * 0.1,
+            x,
+            y,
+            radius
+          )
+          grad.addColorStop(0, '#323442')
+          grad.addColorStop(0.55, '#191b24')
+          grad.addColorStop(1, n.color + '44')
+          ctx.fillStyle = grad
+          ctx.fill()
+          ctx.strokeStyle = n.color
+          ctx.lineWidth = 3
+          ctx.stroke()
         } else {
-          // Geometric Diamond / Mutex Vault Resource
-          ctx.moveTo(x, y - radius)
-          ctx.lineTo(x + radius, y)
-          ctx.lineTo(x, y + radius)
-          ctx.lineTo(x - radius, y)
-          ctx.closePath()
+          const s = radius * 0.92
+          ctx.beginPath()
+          ctx.roundRect(x - s, y - s, s * 2, s * 2, 10 * scale)
+          const grad = ctx.createLinearGradient(x - s, y - s, x + s, y + s)
+          grad.addColorStop(0, '#2a2b3a')
+          grad.addColorStop(1, n.color + '40')
+          ctx.fillStyle = grad
+          ctx.fill()
+          ctx.strokeStyle = n.color
+          ctx.lineWidth = 2.8
+          ctx.stroke()
         }
+        ctx.restore()
 
-        // Metallic Gradient Fill
-        const grad = ctx.createRadialGradient(x - radius * 0.3, y - radius * 0.3, radius * 0.1, x, y, radius)
-        grad.addColorStop(0, '#242428')
-        grad.addColorStop(0.7, '#18181b')
-        grad.addColorStop(1, '#0f0f11')
-        ctx.fillStyle = grad
-        ctx.fill()
+        ctx.font = `700 ${Math.max(11, Math.round(13 * scale))}px "JetBrains Mono", monospace`
+        ctx.fillStyle = '#ffffff'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText((n.short || n.id).slice(0, 7), x, y)
+        ctx.textBaseline = 'alphabetic'
 
-        ctx.strokeStyle = n.color
-        ctx.lineWidth = isProcess ? 2.5 : 2
-        ctx.stroke()
-
-        // Inner glowing core
-        ctx.beginPath()
-        ctx.arc(x, y, radius * 0.28, 0, Math.PI * 2)
-        ctx.fillStyle = n.color
-        ctx.shadowColor = n.color
-        ctx.shadowBlur = 10
-        ctx.fill()
-        ctx.shadowBlur = 0
-
-        // Typography Labels
         ctx.font = `600 ${Math.max(10, Math.round(11 * scale))}px "JetBrains Mono", monospace`
         ctx.fillStyle = '#f4f4f5'
-        ctx.textAlign = 'center'
-        ctx.fillText(n.label, x, y - radius - 8)
+        ctx.fillText(n.label, x, y - radius - 10)
 
-        ctx.font = `400 ${Math.max(8, Math.round(9 * scale))}px "JetBrains Mono", monospace`
+        ctx.font = `600 ${Math.max(9, Math.round(10 * scale))}px "JetBrains Mono", monospace`
         ctx.fillStyle = n.color
-        ctx.fillText(n.sub, x, y + radius + 14)
+        ctx.fillText(n.sub, x, y + radius + 16)
       })
-
-      // 4. Deadlock Loop Alert Banner (HUD)
-      if (mode === 'deadlock') {
-        ctx.save()
-        ctx.fillStyle = 'rgba(244, 63, 94, 0.12)'
-        ctx.strokeStyle = 'rgba(244, 63, 94, 0.35)'
-        ctx.lineWidth = 1
-        ctx.roundRect(width / 2 - 170, 16, 340, 32, 6)
-        ctx.fill()
-        ctx.stroke()
-
-        ctx.font = '600 11px "JetBrains Mono", monospace'
-        ctx.fillStyle = '#f43f5e'
-        ctx.textAlign = 'center'
-        ctx.fillText('⚠ CIRCULAR WAIT DETECTED: P1 ⇄ P2 DEADLOCK', width / 2, 36)
-        ctx.restore()
-      } else if (mode === 'prevented') {
-        ctx.save()
-        ctx.fillStyle = 'rgba(16, 185, 129, 0.1)'
-        ctx.strokeStyle = 'rgba(16, 185, 129, 0.35)'
-        ctx.lineWidth = 1
-        ctx.roundRect(width / 2 - 180, 16, 360, 32, 6)
-        ctx.fill()
-        ctx.stroke()
-
-        ctx.font = '600 11px "JetBrains Mono", monospace'
-        ctx.fillStyle = '#10b981'
-        ctx.textAlign = 'center'
-        ctx.fillText('✓ PREVENTED: HIERARCHY ORDER F(A)=1 < F(B)=2', width / 2, 36)
-        ctx.restore()
-      }
 
       animRef.current = requestAnimationFrame(render)
     }
@@ -433,17 +539,135 @@ export default function Deadlock3D({
     return () => {
       if (animRef.current) cancelAnimationFrame(animRef.current)
     }
-  }, [getNodes, getEdges, mode])
+  }, [getNodes, getEdges, mode, isFlat2D])
+
+  const theme = MODE_THEME[mode] || MODE_THEME.idle
+  const bannerLabel =
+    mode === 'deadlock' && Array.isArray(cycle) && cycle.length > 1
+      ? `CYCLE DETECTED: ${cycle.join(' → ')}`
+      : theme.bannerText
 
   return (
     <div
-      className={`relative rounded-md border border-[var(--border)] bg-[#0d0d0f] overflow-hidden select-none ${className}`}
-      style={{ height }}
+      className={className}
+      style={{
+        position: 'relative',
+        height,
+        borderRadius: 14,
+        border: `1px solid ${theme.bannerBorder}`,
+        background: 'rgba(13, 15, 22, 0.72)',
+        backdropFilter: 'blur(18px)',
+        overflow: 'hidden',
+        userSelect: 'none',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 12px 32px rgba(0, 0, 0, 0.5)',
+      }}
     >
-      {/* 3D Canvas */}
+      {/* Top Status Banner */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 12,
+          left: 12,
+          right: 215,
+          zIndex: 4,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '7px 12px',
+          borderRadius: 9,
+          background: theme.bannerBg,
+          border: `1px solid ${theme.bannerBorder}`,
+          color: theme.bannerColor,
+          fontFamily: '"JetBrains Mono", monospace',
+          fontSize: 11,
+          fontWeight: 600,
+          backdropFilter: 'blur(10px)',
+        }}
+      >
+        <span
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: '50%',
+            background: theme.bannerColor,
+            boxShadow: `0 0 8px ${theme.bannerColor}`,
+            flexShrink: 0,
+          }}
+        />
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {bannerLabel}
+        </span>
+      </div>
+
+      {/* Top-Right Camera & 2D/3D Controls */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 12,
+          right: 12,
+          zIndex: 4,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '5px 10px',
+          borderRadius: 9,
+          background: 'rgba(20, 22, 30, 0.78)',
+          border: '1px solid rgba(255, 255, 255, 0.14)',
+          color: 'var(--text-secondary)',
+          fontSize: 11,
+          backdropFilter: 'blur(10px)',
+        }}
+      >
+        <button
+          onClick={toggleViewMode}
+          title={isFlat2D ? 'Switch to 3D Orbit View' : 'Switch to Flat 2D Diagram'}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            background: isFlat2D ? 'rgba(56, 189, 248, 0.18)' : 'rgba(16, 185, 129, 0.16)',
+            color: isFlat2D ? '#38bdf8' : '#34d399',
+            border: `1px solid ${isFlat2D ? 'rgba(56, 189, 248, 0.35)' : 'rgba(16, 185, 129, 0.35)'}`,
+            borderRadius: 6,
+            padding: '2px 8px',
+            fontSize: 10,
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          {isFlat2D ? <Layers size={12} /> : <Box size={12} />}
+          {isFlat2D ? '2D Flat' : '3D Orbit'}
+        </button>
+        <Rotate3d size={13} color="var(--accent)" />
+        <span className="mono" style={{ fontSize: 10 }}>
+          {cameraDisplay.theta}° / {cameraDisplay.phi}°
+        </span>
+        <button
+          onClick={resetView}
+          title="Reset Camera Angle"
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--fg)',
+            cursor: 'pointer',
+            padding: 2,
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          <Maximize2 size={12} />
+        </button>
+      </div>
+
+      {/* Main Canvas */}
       <canvas
         ref={canvasRef}
-        className="w-full h-full cursor-grab active:cursor-grabbing block"
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'block',
+          cursor: isFlat2D ? 'default' : 'grab',
+        }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -451,40 +675,49 @@ export default function Deadlock3D({
         onWheel={handleWheel}
       />
 
-      {/* Floating Controls HUD */}
-      <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-[var(--surface)]/80 backdrop-blur-md px-2.5 py-1.5 rounded border border-[var(--border)] text-xs text-[var(--muted)]">
-        <Rotate3d className="w-3.5 h-3.5 text-[var(--accent)]" />
-        <span className="font-mono text-[11px] tabular-nums">
-          θ:{cameraDisplay.theta}° φ:{cameraDisplay.phi}°
+      {/* Bottom Legend Bar */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: 10,
+          left: 12,
+          right: 12,
+          zIndex: 4,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 10,
+          padding: '7px 12px',
+          borderRadius: 9,
+          background: 'rgba(18, 20, 28, 0.78)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          fontSize: 11,
+          color: 'var(--text-secondary)',
+          backdropFilter: 'blur(10px)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#38bdf8', boxShadow: '0 0 6px #38bdf8' }} />
+            Process (Sphere)
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 3, background: '#a78bfa', boxShadow: '0 0 6px #a78bfa' }} />
+            Resource Lock (Vault)
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 14, height: 3, borderRadius: 2, background: '#10b981' }} />
+            Holding Edge (R → P)
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 14, height: 3, borderRadius: 2, background: '#f43f5e' }} />
+            Waiting Edge (P → R)
+          </span>
+        </div>
+        <span className="mono" style={{ fontSize: 10, color: 'var(--dim)' }}>
+          {isFlat2D ? 'Clean 2D Diagram Mode' : 'Drag to Rotate · Scroll to Zoom'}
         </span>
-        <button
-          onClick={resetView}
-          title="Reset Camera Angle"
-          className="ml-1 p-1 hover:text-[var(--fg)] hover:bg-[var(--surface-hover)] rounded transition-colors"
-        >
-          <Maximize2 className="w-3 h-3" />
-        </button>
-      </div>
-
-      {/* Bottom Hint & Legend */}
-      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-[11px] text-[var(--muted)] bg-[var(--surface)]/70 backdrop-blur-sm px-3 py-1.5 rounded border border-[var(--border)]">
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#3b82f6] border border-[#60a5fa]" /> Process (Circle)
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rotate-45 bg-[#0ea5e9] border border-[#38bdf8]" /> Resource (Vault)
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-0.5 bg-[#10b981]" /> Holding Edge
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-0.5 bg-[#f43f5e]" /> Request Edge (Wait)
-          </span>
-        </div>
-        <div className="font-mono text-[10px] hidden sm:block">
-          Drag to 3D Rotate · Scroll to Zoom
-        </div>
       </div>
     </div>
   )
