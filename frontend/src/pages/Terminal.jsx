@@ -42,7 +42,9 @@ export default function Terminal() {
     })
     t.open(ref.current)
 
-    const ws = new WebSocket(`ws://${location.host}/api/terminal`)
+    const proto = typeof location !== 'undefined' && location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const host = typeof location !== 'undefined' ? location.host : 'localhost:8000'
+    const ws = new WebSocket(`${proto}//${host}/api/terminal`)
     const P = 'guardian@ubuntu:~$ '
     const H = []
     let buf = ''

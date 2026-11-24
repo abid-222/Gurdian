@@ -12,7 +12,16 @@ from risk.engine import level
 TOKEN = os.environ.get("GUARDIAN_TOKEN") or secrets.token_hex(16)   # start.sh exports it; the Vite proxy sends it
 database.init()
 app = FastAPI(title="Smart OS Guardian")
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:8000", "http://127.0.0.1:8000"], allow_methods=["*"], allow_headers=["*"])
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    return response
 
 def ok_token(conn): return hmac.compare_digest(conn.headers.get("x-guardian-token", ""), TOKEN)
 def auth_http(request: Request):
@@ -42,7 +51,11 @@ def hist(module: str):
 @api.get("/api/alerts")
 def alerts(severity: str | None = None):
     q, a = "SELECT * FROM alerts", ()
-    if severity: q += " WHERE severity=?"; a = (severity.upper(),)
+    if severity:
+        sev = severity.upper()
+        if sev not in {"CRITICAL", "HIGH", "MEDIUM", "LOW", "SAFE", "WARNING"}:
+            raise HTTPException(400, "invalid severity filter")
+        q += " WHERE severity=?"; a = (sev,)
     with database.db() as c: return [dict(r) for r in c.execute(q + " ORDER BY id DESC LIMIT 200", a)]
 
 @api.post("/api/alerts/{aid}/ack")
@@ -86,18 +99,32 @@ def info():
 
 @api.post("/api/snapshot")
 def snapshot(d: dict):
-    row = (int(time.time()), d.get("source", "linux"), d.get("cpu"), d.get("ram"), d.get("disk"), d.get("rx"), d.get("tx"))
+    def _flt(v, default=0.0):
+        try: return float(v)
+        except (ValueError, TypeError): return default
+    row = (
+        int(time.time()),
+        str(d.get("source", "linux"))[:20],
+        _flt(d.get("cpu")),
+        _flt(d.get("ram")),
+        _flt(d.get("disk")),
+        _flt(d.get("rx")),
+        _flt(d.get("tx")),
+    )
     with database.db() as c: c.execute("INSERT INTO system_stats(ts,source,cpu,ram,disk,rx,tx) VALUES(?,?,?,?,?,?,?)", row)
     database.add_events([(row[0], "system", row[1], "snapshot", f"cpu {row[2]}% ram {row[3]}% disk {row[4]}%")])
     return {"ok": True}
 
 @api.post("/api/watch")   # File Vault: add a file to the watchlist (path is validated and is never passed to a shell)
 def watch(d: dict):
-    p = str(d.get("path", ""))
-    if not re.fullmatch(r"/[\w./@+ -]{1,300}", p) or ".." in p or not os.path.isfile(p) or os.path.getsize(p) > 5_000_000: raise HTTPException(400, "invalid path (absolute file, max 5 MB)")
+    p = str(d.get("path", "")).strip()
+    is_posix = bool(re.fullmatch(r"/[\w./@+ -]{1,300}", p))
+    is_win = bool(re.fullmatch(r"[A-Za-z]:[/\\][\w./@+ \\-]{1,300}", p))
+    if (not is_posix and not is_win) or ".." in p or not os.path.isfile(p) or os.path.getsize(p) > 5_000_000:
+        raise HTTPException(400, "invalid path (absolute file, max 5 MB)")
     USER_WATCH.parent.mkdir(parents=True, exist_ok=True)   # your own list, the shipped watchlist.conf is never modified
-    txt = USER_WATCH.read_text() if USER_WATCH.exists() else ""
-    if p not in txt.split("\n"): USER_WATCH.write_text(txt.rstrip("\n") + ("\n" if txt else "") + p + "\n")
+    txt = USER_WATCH.read_text(encoding="utf-8") if USER_WATCH.exists() else ""
+    if p not in txt.split("\n"): USER_WATCH.write_text(txt.rstrip("\n") + ("\n" if txt else "") + p + "\n", encoding="utf-8")
     CACHE.clear(); return {"ok": True}
 
 DEMO = {"linux": {"port", "temp", "deleted", "file", "reset"}, "windows": {"port", "temp", "startup", "reset"}}
@@ -120,6 +147,9 @@ def deadlock_banker(d: dict):
     alloc = d.get("allocation", [])
     if not isinstance(avail, list) or not isinstance(max_m, list) or not isinstance(alloc, list):
         raise HTTPException(400, "available, maximum, allocation must be lists")
+    # Matrix dimension sanity & DoS boundary checks
+    if not (1 <= len(avail) <= 20 and 1 <= len(max_m) <= 50 and len(max_m) == len(alloc)):
+        raise HTTPException(400, "matrix dimensions must be 1-50 processes and 1-20 resources")
     return deadlock.bankers_safety_algorithm(avail, max_m, alloc)
 
 @api.post("/api/deadlock/wfg")

@@ -5,3 +5,8 @@ CREATE TABLE IF NOT EXISTS system_stats(id INTEGER PRIMARY KEY, ts INTEGER, sour
 CREATE TABLE IF NOT EXISTS items(module TEXT, source TEXT, k TEXT, name TEXT, first_seen INTEGER, last_seen INTEGER, PRIMARY KEY(module, source, k));
 CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY, ts INTEGER, module TEXT, source TEXT, kind TEXT, summary TEXT, UNIQUE(module, source, kind, summary, ts));
 CREATE TABLE IF NOT EXISTS score_history(ts INTEGER, score INTEGER);
+CREATE INDEX IF NOT EXISTS idx_alerts_ack_rule ON alerts(acknowledged, rule_id);
+CREATE INDEX IF NOT EXISTS idx_alerts_dedup ON alerts(rule_id, source, message, ts);
+CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts DESC, module);
+CREATE INDEX IF NOT EXISTS idx_scans_mod_src ON scans(module, source, ts DESC);
+CREATE INDEX IF NOT EXISTS idx_score_hist_ts ON score_history(ts DESC);

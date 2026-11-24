@@ -13,14 +13,20 @@ export function useLive(src, active = true, keep = 300) {
     let ws, t, n = 0, dead = false
     const open = () => {
       setConn('connecting')
-      ws = new WebSocket(`ws://${location.host}/ws/live?source=${s}`)
+      const proto = typeof location !== 'undefined' && location.protocol === 'https:' ? 'wss:' : 'ws:'
+      const host = typeof location !== 'undefined' ? location.host : 'localhost:8000'
+      ws = new WebSocket(`${proto}//${host}/ws/live?source=${s}`)
       ws.onopen = () => { n = 0; setConn('live') }
       ws.onmessage = e => {
-        const d = JSON.parse(e.data)
-        if (d.error) setError(d.error)
-        else {
-          setError('')
-          setPts(p => [...p, d].slice(-keep))
+        try {
+          const d = JSON.parse(e.data)
+          if (d.error) setError(d.error)
+          else {
+            setError('')
+            setPts(p => [...p, d].slice(-keep))
+          }
+        } catch {
+          // Ignore malformed non-JSON frame safely
         }
       }
       ws.onclose = () => {

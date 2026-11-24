@@ -2,6 +2,9 @@ export const api = (p, m = 'GET', body) =>
   fetch(p, { method: m, headers: body ? { 'Content-Type': 'application/json' } : undefined, body: body && JSON.stringify(body) })
     .then(async r => { if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || `${r.status} ${p}`); return r.json() })
 
+api.get = p => api(p, 'GET')
+api.post = (p, body) => api(p, 'POST', body)
+
 export const sources = src => (src === 'both' ? ['windows', 'linux'] : [src])
 
 export const saveBaseline = async (mod, src) => {
@@ -18,5 +21,9 @@ export const saveBaseline = async (mod, src) => {
 export const toCsv = (rows, name) => {
   if (!rows?.length) return
   const k = Object.keys(rows[0]), q = v => `"${String(v ?? '').replace(/"/g, '""')}"`
-  Object.assign(document.createElement('a'), { download: name, href: URL.createObjectURL(new Blob([[k.join(','), ...rows.map(r => k.map(c => q(r[c])).join(','))].join('\n')], { type: 'text/csv' })) }).click()
+  const blob = new Blob([[k.join(','), ...rows.map(r => k.map(c => q(r[c])).join(','))].join('\n')], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = Object.assign(document.createElement('a'), { download: name, href: url })
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

@@ -4,11 +4,17 @@ ROOT = Path(__file__).resolve().parents[2]
 DB = os.environ.get("GUARDIAN_DB", str(ROOT / "data" / "guardian.db"))
 
 def db():
-    c = sqlite3.connect(DB); c.row_factory = sqlite3.Row; return c
+    c = sqlite3.connect(DB, timeout=30.0)
+    c.row_factory = sqlite3.Row
+    return c
 
 def init():
     Path(DB).parent.mkdir(parents=True, exist_ok=True)
-    with db() as c: c.executescript((Path(__file__).with_name("schema.sql")).read_text())
+    with db() as c:
+        c.execute("PRAGMA journal_mode=WAL;")
+        c.execute("PRAGMA busy_timeout=30000;")
+        c.execute("PRAGMA synchronous=NORMAL;")
+        c.executescript((Path(__file__).with_name("schema.sql")).read_text())
 
 def add_events(evs):
     """evs = [(ts, module, source, kind, summary)]; the same event is stored once (timeline)."""

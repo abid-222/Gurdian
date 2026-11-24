@@ -136,3 +136,31 @@ def test_history_system_has_snapshots():
     c.post("/api/snapshot", json={"source": "linux", "cpu": 11.5, "ram": 22.5, "disk": 33.5, "rx": 1, "tx": 2})
     h = c.get("/api/history/system").json()
     assert h["snapshots"][0]["cpu"] == 11.5 and h["snapshots"][0]["source"] == "linux" and c.get("/api/history/usb").json()["snapshots"] == []
+
+def test_security_hardening_headers():
+    res = c.get("/api/health")
+    assert res.status_code == 200
+    assert res.headers["x-content-type-options"] == "nosniff"
+    assert res.headers["x-frame-options"] == "DENY"
+    assert res.headers["referrer-policy"] == "strict-origin-when-cross-origin"
+
+def test_terminal_path_traversal_prevention():
+    from app.terminal import term_cmd
+    # Path traversal outside project root must be refused
+    out = term_cmd("cat ../../../../../../../../etc/passwd")
+    assert "permission denied" in out or "outside project root" in out
+
+def test_alerts_severity_validation():
+    # Valid severity works
+    assert c.get("/api/alerts?severity=HIGH").status_code == 200
+    # Invalid severity returns HTTP 400
+    assert c.get("/api/alerts?severity=MALICIOUS_INJECTION").status_code == 400
+
+def test_deadlock_banker_dos_boundary_validation():
+    # Oversized process count (>50) must be rejected with 400
+    oversized = {
+        "available": [1, 1],
+        "maximum": [[1, 1]] * 60,
+        "allocation": [[0, 0]] * 60
+    }
+    assert c.post("/api/deadlock/banker", json=oversized).status_code == 400

@@ -306,7 +306,14 @@ def term_cmd(raw_cmd):
 
     if lower_cmd.startswith("cat ") or lower_cmd.startswith("type "):
         target = cmd.split(maxsplit=1)[1].strip()
-        p = Path(os.getcwd()) / target
+        try:
+            p = (Path(os.getcwd()) / target).resolve()
+            root_res = ROOT.resolve()
+            # Path traversal prevention: strictly confined to project root
+            if root_res not in p.parents and p != root_res:
+                return f"cat: permission denied: '{target}' is outside project root"
+        except Exception:
+            return f"cat: invalid path '{target}'"
         if not p.exists():
             return f"cat: {target}: No such file or directory"
         if p.is_dir():
@@ -332,6 +339,9 @@ async def terminal_ws(ws: WebSocket):
     try:
         while True:
             raw = await ws.receive_text()
+            if len(raw) > 1024:
+                await ws.send_text("refused: command exceeds 1024 character buffer limit")
+                continue
             out = await asyncio.to_thread(term_cmd, raw)
             await ws.send_text(out)
     except (WebSocketDisconnect, ConnectionError):
