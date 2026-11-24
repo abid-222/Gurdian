@@ -12,11 +12,10 @@ set -euo pipefail
 
 LOCK_DIR="/tmp/guardian_deadlock"
 STATUS_FILE="$LOCK_DIR/status.json"
-PID_FILE="$LOCK_DIR/pids.txt"
 
 if [ -f "$STATUS_FILE" ]; then
     cat "$STATUS_FILE"
     exit 0
 fi
 
-echo '{"mode":"idle","p1":null,"p2":null,"cycle":null,"timestamp":'$(date +%s)'}'
+echo "{\"mode\":\"idle\",\"p1\":null,\"p2\":null,\"cycle\":null,\"timestamp\":$(date +%s)}"

@@ -19,7 +19,7 @@ if [ ! -f "$PID_FILE" ]; then
     exit 0
 fi
 
-PIDS=($(cat "$PID_FILE"))
+mapfile -t PIDS < "$PID_FILE"
 if [ ${#PIDS[@]} -lt 2 ]; then
     echo "[RESOLVE_WARN] Less than 2 recorded deadlock PIDs."
     exit 0
@@ -56,6 +56,6 @@ EOF
 
 # Clean up lockfiles
 rm -f "$LOCK_DIR"/*.lock
-> "$PID_FILE"
+: > "$PID_FILE"
 
 echo "[RESOLVE_SUCCESS] Deadlock cycle dismantled. System is operating normally."

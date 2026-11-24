@@ -20,7 +20,7 @@ PID_FILE="$LOCK_DIR/pids.txt"
 STATUS_FILE="$LOCK_DIR/status.json"
 
 touch "$RES_A" "$RES_B"
-> "$PID_FILE"
+: > "$PID_FILE"
 
 echo "[DEADLOCK_INIT] Spawning Process P1 and Process P2 with conflicting lock acquisition..."
 
