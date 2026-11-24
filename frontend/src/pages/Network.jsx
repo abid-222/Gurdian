@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, Save, Activity, Radio, Download } from 'lucide-react'
+import { Search, Save, Activity, Radio, Download, ArrowRight, AlertTriangle } from 'lucide-react'
 import { saveBaseline, toCsv } from '../api'
 import { useScan } from '../hooks/useScan'
 import Radar from '../components/Radar'
@@ -26,6 +26,7 @@ export default function Network({ src }) {
   const all = data?.rows || []
   const listen = all.filter(r => r.state === 'LISTEN')
   const est = all.filter(r => r.state === 'ESTABLISHED')
+  const newPorts = all.filter(r => r.status === 'NEW')
 
   const save = async () => {
     setBusy(true)
@@ -40,45 +41,38 @@ export default function Network({ src }) {
   }
 
   return (
-    <div>
-      {/* ── Network Security Header ── */}
-      <div className="card" style={{ padding: '16px 20px', marginBottom: 14 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Network Security Header */}
+      <div className="card" style={{ padding: '16px 20px', marginBottom: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <Radio size={18} color="var(--dim)" />
+              <Radio size={18} color="var(--accent)" />
               <h3 style={{ margin: 0, color: 'var(--fg)', fontSize: 16, fontWeight: 600 }}>
                 Network perimeter
               </h3>
-              <Badge v={listen.length > 0 ? `${listen.length} listening` : 'Monitored'} tone="g" />
+              <Badge v={newPorts.length > 0 ? `${newPorts.length} NEW PORT(S)` : `${listen.length} listening`} tone={newPorts.length > 0 ? 'r' : 'g'} />
             </div>
-            <p className="dim" style={{ fontSize: 12, margin: '4px 0 0', maxWidth: 740, lineHeight: 1.5 }}>
-              Audits TCP/UDP sockets and remote connections. Flags unbaselined listening ports and maps active traffic per binary.
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 11, color: 'var(--dim)', marginTop: 4 }}>
+              <span>1. Scan Live TCP/UDP Sockets</span>
+              <ArrowRight size={11} />
+              <span>2. Compare vs Saved Port Baseline</span>
+              <ArrowRight size={11} />
+              <span style={{ color: 'var(--r)' }}>3. Flag Rogue Ports (NEW)</span>
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Badge v={`Established: ${est.length}`} tone="c" />
-          </div>
+          <Btn variant="primary" onClick={save} loading={busy}>
+            <Save size={14} /> Save Baseline
+          </Btn>
         </div>
       </div>
 
-      {/* ── Toolbar ── */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
-        <Btn onClick={run} loading={loading}>
-          <Search size={14} /> Scan Ports
-        </Btn>
-        <Btn onClick={save} loading={busy}>
-          <Save size={14} /> Save Baseline
-        </Btn>
-        <Btn on={conn} onClick={() => setConn(!conn)}>
-          <Activity size={14} /> Show Connections
-        </Btn>
-        <Btn on={radar} onClick={() => setRadar(!radar)}>
-          <Radio size={14} /> Radar {radar ? 'On' : 'Off'}
-        </Btn>
-        <Btn onClick={() => toCsv(all, 'network.csv')} disabled={!all.length}>
-          <Download size={14} /> Export CSV
-        </Btn>
+      {/* Toolbar */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <Btn onClick={run} loading={loading}><Search size={14} /> Scan Ports</Btn>
+        <Btn on={conn} onClick={() => setConn(!conn)}><Activity size={14} /> Show Connections</Btn>
+        <Btn on={radar} onClick={() => setRadar(!radar)}><Radio size={14} /> Radar {radar ? 'On' : 'Off'}</Btn>
+        <Btn onClick={() => toCsv(all, 'network.csv')} disabled={!all.length}><Download size={14} /> Export CSV</Btn>
         <span className="dim" style={{ marginLeft: 'auto', fontSize: 12 }}>
           {listen.length} listening · {est.length} established {msg && `· ${msg}`}
         </span>
@@ -86,48 +80,66 @@ export default function Network({ src }) {
 
       <ErrorBox error={error || err} errors={data?.errors} />
 
-      {/* ── Active scan alerts ── */}
+      {/* Highlighted Rogue / NEW Ports Banner */}
+      {newPorts.length > 0 && (
+        <div
+          className="card"
+          style={{
+            marginBottom: 0,
+            borderLeft: '4px solid var(--r)',
+            background: 'rgba(229, 72, 77, 0.08)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 12, color: 'var(--r)' }}>
+            <AlertTriangle size={15} /> Unbaselined / Rogue Listening Ports Detected ({newPorts.length})
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {newPorts.map((p, idx) => (
+              <Badge key={idx} v={`NEW: ${p.proto} :${p.local_port} (${p.process || 'unknown'})`} tone="r" />
+            ))}
+          </div>
+        </div>
+      )}
+
       {data?.alerts.map((a, i) => (
-        <div key={i} style={{ marginBottom: 6 }}>
+        <div key={i} style={{ marginBottom: 2 }}>
           <Badge v={a.severity} /> {a.message}
         </div>
       ))}
 
-      {/* ── Metrics Summary ── */}
-      <div className="grid">
-        <Card title="Listening Ports">
+      {/* Metrics Summary */}
+      <div className="grid" style={{ marginBottom: 0 }}>
+        <Card title="Listening Ports" style={{ marginBottom: 0 }}>
           <div className="stat" style={{ color: 'var(--g)' }}>{listen.length}</div>
-          <span className="dim">Active services waiting for connection</span>
+          <span className="dim">Active services accepting connections</span>
         </Card>
-        <Card title="Established Sockets">
+        <Card title="Established Sockets" style={{ marginBottom: 0 }}>
           <div className="stat" style={{ color: 'var(--c)' }}>{est.length}</div>
-          <span className="dim">Active peer-to-peer network sessions</span>
+          <span className="dim">Active remote network sessions</span>
         </Card>
-        <Card title="Network Scope">
-          <div className="stat">{src.toUpperCase()}</div>
-          <span className="dim">Current collector inspection source</span>
+        <Card title="Unbaselined (NEW)" style={{ marginBottom: 0 }}>
+          <div className="stat" style={{ color: newPorts.length > 0 ? 'var(--r)' : 'var(--g)' }}>{newPorts.length}</div>
+          <span className="dim">{newPorts.length > 0 ? 'Unexpected ports vs baseline' : `Source: ${src.toUpperCase()}`}</span>
         </Card>
       </div>
 
-      {/* ── Connections Per Process ── */}
-      <Card title="Connections per process (listening + established)">
+      <Card title="Connections per process (listening + established)" style={{ marginBottom: 0 }}>
         <Table rows={perProcess(all)} />
       </Card>
 
-      {/* ── Geometric Socket Radar ── */}
       {radar && (
-        <Card title="Live Socket Geometry Radar (Port Range & Protocol Mapping)">
+        <Card title="Live Socket Geometry Radar (Port Range & Protocol Mapping)" style={{ marginBottom: 0 }}>
           <Radar rows={listen} />
         </Card>
       )}
 
-      {/* ── Raw Socket Table ── */}
-      <div style={{ marginTop: 14 }}>
-        <Table
-          rows={conn ? all : listen}
-          cols={['source', 'proto', 'local_addr', 'local_port', 'state', 'process', 'remote_addr', 'status']}
-        />
-      </div>
+      <Table
+        rows={conn ? all : listen}
+        cols={['source', 'proto', 'local_addr', 'local_port', 'state', 'process', 'remote_addr', 'status']}
+      />
     </div>
   )
 }

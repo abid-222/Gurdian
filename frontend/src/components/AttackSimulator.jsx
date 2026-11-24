@@ -12,6 +12,7 @@ import {
   Activity,
   AlertTriangle,
   Sparkles,
+  Zap,
 } from 'lucide-react'
 import { api } from '../api'
 import { Badge, Btn, ErrorBox } from './ui'
@@ -94,12 +95,14 @@ const SCENARIOS = {
 }
 
 function rowSignature(row) {
-  return `${row.pid || ''}|${row.port || ''}|${row.name || ''}|${row.path || ''}|${row.entry || ''}|${row.sha256 || ''}`
+  return `${row.pid || ''}|${row.local_port || row.port || ''}|${row.process || row.name || ''}|${row.path || ''}|${row.entry || ''}|${row.sha256 || ''}`
 }
 
 function formatArtifact(r) {
-  if (r.port) return { primary: `Port ${r.port} (${r.proto || 'TCP'})`, secondary: `${r.name || 'Socket'} · ${r.state || 'LISTENING'}` }
-  if (r.pid) return { primary: `${r.name || 'Process'} (PID ${r.pid})`, secondary: r.path || r.cmd || 'Suspicious execution' }
+  const port = r.local_port || r.port
+  const proc = r.process || r.name
+  if (port) return { primary: `Port ${port} (${r.proto || 'TCP'})`, secondary: `${proc || 'Socket'} · ${r.state || 'LISTENING'}` }
+  if (r.pid) return { primary: `${proc || 'Process'} (PID ${r.pid})`, secondary: r.path || r.cmd || 'Suspicious execution' }
   if (r.entry || r.path) return { primary: r.entry || r.path, secondary: r.sha256 ? `SHA256: ${String(r.sha256).slice(0, 16)}…` : 'Modified entry' }
   return { primary: 'Host Anomaly Artifact', secondary: JSON.stringify(r).slice(0, 60) }
 }
@@ -199,11 +202,24 @@ export default function AttackSimulator({ src = 'both', onUpdate }) {
       style={{
         marginBottom: 0,
         padding: 20,
-        background: 'linear-gradient(145deg, rgba(20, 22, 30, 0.88) 0%, rgba(16, 185, 129, 0.04) 55%, rgba(56, 189, 248, 0.05) 100%)',
+        background: 'linear-gradient(145deg, rgba(20, 22, 30, 0.9) 0%, rgba(16, 185, 129, 0.04) 55%, rgba(56, 189, 248, 0.05) 100%)',
         border: '1px solid rgba(56, 189, 248, 0.25)',
         borderRadius: 14,
       }}
     >
+      <style>{`
+        @keyframes basSlideStep {
+          from { opacity: 0; transform: translateX(-10px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes basPulseArrow {
+          0%, 100% { transform: translateX(0); opacity: 0.7; }
+          50%      { transform: translateX(4px); opacity: 1; }
+        }
+        .bas-step { animation: basSlideStep 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
+        .bas-arrow { animation: basPulseArrow 1.3s ease-in-out infinite; }
+      `}</style>
+
       {/* Header */}
       <div
         style={{
@@ -236,12 +252,12 @@ export default function AttackSimulator({ src = 'both', onUpdate }) {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--fg)' }}>
-                Breach &amp; Attack Simulation (Before / After Detection Proof)
+                Breach &amp; Attack Simulation (Live Detection Proof)
               </span>
-              <Badge v={`TARGET: ${s.toUpperCase()}`} tone="c" />
+              <Badge v={`OS: ${s.toUpperCase()}`} tone="c" />
             </div>
             <div className="dim" style={{ fontSize: 12, marginTop: 2 }}>
-              Simulate real host threats and compare the exact Before vs After OS state, risk score delta, and fired rules.
+              Watch the step-by-step arrow pipeline: Inject Anomaly → Detect OS Change → Trigger Rule → Jump Risk Score.
             </div>
           </div>
         </div>
@@ -263,14 +279,7 @@ export default function AttackSimulator({ src = 'both', onUpdate }) {
       <ErrorBox error={err} />
 
       {/* Scenario Cards */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-          gap: 12,
-          marginBottom: 18,
-        }}
-      >
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12, marginBottom: 18 }}>
         {scenarios.map(sc => {
           const isActive = proof?.type === 'attack' && proof?.scenario?.id === sc.id
           return (
@@ -280,7 +289,7 @@ export default function AttackSimulator({ src = 'both', onUpdate }) {
                 padding: 14,
                 borderRadius: 11,
                 background: 'rgba(12, 14, 20, 0.72)',
-                border: isActive ? '1px solid rgba(244, 63, 94, 0.55)' : '1px solid rgba(255,255,255,0.08)',
+                border: isActive ? '1px solid rgba(244, 63, 94, 0.6)' : '1px solid rgba(255,255,255,0.08)',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
@@ -299,7 +308,7 @@ export default function AttackSimulator({ src = 'both', onUpdate }) {
                   {sc.desc}
                 </p>
                 <div style={{ fontSize: 11, color: 'var(--text-secondary)', padding: '7px 9px', borderRadius: 7, background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <b style={{ color: '#38bdf8' }}>Detection Rule:</b> {sc.howDetected}
+                  <b style={{ color: '#38bdf8' }}>Rule:</b> {sc.howDetected}
                 </div>
               </div>
 
@@ -340,7 +349,7 @@ export default function AttackSimulator({ src = 'both', onUpdate }) {
         })}
       </div>
 
-      {/* Crystal-Clear Side-by-Side BEFORE vs AFTER Comparison */}
+      {/* Animated Arrow Pipeline + Before/After Proof */}
       {!proof ? (
         <div
           style={{
@@ -357,7 +366,7 @@ export default function AttackSimulator({ src = 'both', onUpdate }) {
         >
           <Sparkles size={16} color="#38bdf8" />
           <span>
-            Click <b style={{ color: '#fb7185' }}>Run Attack &amp; Detect</b> on any scenario above to view the live <b style={{ color: 'var(--fg)' }}>Before vs After</b> system diff, newly detected OS artifacts, and triggered rules.
+            Click <b style={{ color: '#fb7185' }}>Run Attack &amp; Detect</b> on any card above to watch the live arrow-by-arrow <b style={{ color: 'var(--fg)' }}>Before → Change → Detection → Risk Jump</b> pipeline.
           </span>
         </div>
       ) : (
@@ -365,21 +374,19 @@ export default function AttackSimulator({ src = 'both', onUpdate }) {
           style={{
             padding: 18,
             borderRadius: 12,
-            background: 'rgba(10, 12, 18, 0.78)',
-            border: `1px solid ${proof.type === 'reset' ? 'rgba(16, 185, 129, 0.42)' : 'rgba(244, 63, 94, 0.42)'}`,
+            background: 'rgba(10, 12, 18, 0.82)',
+            border: `1px solid ${proof.type === 'reset' ? 'rgba(16, 185, 129, 0.45)' : 'rgba(244, 63, 94, 0.45)'}`,
             display: 'flex',
             flexDirection: 'column',
             gap: 16,
           }}
         >
-          {/* Proof Banner */}
+          {/* Banner */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {proof.type === 'reset' ? <CheckCircle2 size={18} color="#34d399" /> : <ShieldAlert size={18} color="#fb7185" />}
               <span style={{ fontWeight: 700, fontSize: 14, color: proof.type === 'reset' ? '#34d399' : '#fb7185' }}>
-                {proof.type === 'reset'
-                  ? 'Baseline Restored — All Simulated Threats Cleared'
-                  : `Attack Detected: ${proof.scenario.title}`}
+                {proof.type === 'reset' ? 'Baseline Restored — All Simulated Threats Cleared' : `Live Detection Flow: ${proof.scenario.title}`}
               </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -407,82 +414,73 @@ export default function AttackSimulator({ src = 'both', onUpdate }) {
             </div>
           </div>
 
-          {/* 3-Column Visual Before / Delta / After Comparison */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 12, alignItems: 'stretch' }}>
-            {/* BEFORE */}
-            <div
-              style={{
-                padding: 14,
-                borderRadius: 10,
-                background: 'rgba(16, 185, 129, 0.08)',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 6,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span className="mono" style={{ fontSize: 10, fontWeight: 700, color: '#34d399' }}>1. BEFORE (BASELINE)</span>
-                <ShieldCheck size={14} color="#34d399" />
-              </div>
-              <div className="mono" style={{ fontSize: 22, fontWeight: 700, color: '#34d399' }}>
-                Risk: {proof.beforeScore}
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                {proof.beforeCount !== undefined
-                  ? `${proof.beforeCount} host items · ${proof.beforeAlertCount} alerts`
-                  : 'Pre-cleanup system posture'}
-              </div>
-            </div>
-
-            {/* DELTA ARROW */}
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '0 8px',
-                gap: 6,
-              }}
-            >
-              <Badge
-                v={delta > 0 ? `+${delta} RISK` : delta < 0 ? `${delta} RISK` : 'VERIFIED'}
-                tone={delta > 0 ? 'r' : 'g'}
+          {/* 4-Step Animated Arrow Pipeline */}
+          {proof.type === 'attack' ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr auto 1fr auto 1fr', gap: 8, alignItems: 'center' }}>
+              <PipelineCard
+                delay="0ms"
+                step="1. BEFORE"
+                color="#34d399"
+                title={`Risk: ${proof.beforeScore}`}
+                sub={`${proof.beforeCount} items · ${proof.beforeAlertCount} alerts`}
+                icon={<ShieldCheck size={14} color="#34d399" />}
               />
-              <ArrowRight size={20} color={delta > 0 ? '#fb7185' : '#34d399'} />
+              <ArrowRight size={18} color="#38bdf8" className="bas-arrow" />
+              <PipelineCard
+                delay="100ms"
+                step="2. INJECTED"
+                color="#fbbf24"
+                title={proof.scenario.id.toUpperCase()}
+                sub={proof.scenario.mitre}
+                icon={<Zap size={14} color="#fbbf24" />}
+              />
+              <ArrowRight size={18} color="#fb7185" className="bas-arrow" />
+              <PipelineCard
+                delay="200ms"
+                step="3. DETECTED"
+                color="#38bdf8"
+                title={`${proof.changedRows.length} Changed`}
+                sub={`${proof.alerts.length} rule(s) fired`}
+                icon={<Activity size={14} color="#38bdf8" />}
+              />
+              <ArrowRight size={18} color="#fb7185" className="bas-arrow" />
+              <PipelineCard
+                delay="300ms"
+                step="4. AFTER"
+                color="#fb7185"
+                title={`Risk: ${proof.afterScore}`}
+                sub={delta > 0 ? `+${delta} Risk Jump` : 'Threat Active'}
+                icon={<AlertTriangle size={14} color="#fb7185" />}
+              />
             </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 12, alignItems: 'center' }}>
+              <PipelineCard delay="0ms" step="BEFORE RESTORE" color="#fbbf24" title={`Risk: ${proof.beforeScore}`} sub="Simulated threat active" icon={<AlertTriangle size={14} color="#fbbf24" />} />
+              <ArrowRight size={20} color="#34d399" className="bas-arrow" />
+              <PipelineCard delay="120ms" step="AFTER RESTORE" color="#34d399" title={`Risk: ${proof.afterScore}`} sub="Clean baseline restored" icon={<CheckCircle2 size={14} color="#34d399" />} />
+            </div>
+          )}
 
-            {/* AFTER */}
-            <div
-              style={{
-                padding: 14,
-                borderRadius: 10,
-                background: proof.type === 'reset' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(244, 63, 94, 0.10)',
-                border: `1px solid ${proof.type === 'reset' ? 'rgba(16, 185, 129, 0.35)' : 'rgba(244, 63, 94, 0.42)'}`,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 6,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span className="mono" style={{ fontSize: 10, fontWeight: 700, color: proof.type === 'reset' ? '#34d399' : '#fb7185' }}>
-                  2. AFTER ({proof.type === 'reset' ? 'RESTORED' : 'DETECTED'})
-                </span>
-                {proof.type === 'reset' ? <CheckCircle2 size={14} color="#34d399" /> : <AlertTriangle size={14} color="#fb7185" />}
-              </div>
-              <div className="mono" style={{ fontSize: 22, fontWeight: 700, color: proof.type === 'reset' ? '#34d399' : '#fb7185' }}>
-                Risk: {proof.afterScore}
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                {proof.afterCount !== undefined
-                  ? `${proof.afterCount} host items · ${proof.afterAlertCount} alerts`
-                  : 'All demo artifacts removed'}
-              </div>
+          {/* Animated Risk Score Bar */}
+          <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 6 }}>
+              <span className="dim">Risk Score Transition</span>
+              <span className="mono" style={{ fontWeight: 700, color: proof.type === 'reset' ? '#34d399' : '#fb7185' }}>
+                {proof.beforeScore} → {proof.afterScore} ({delta >= 0 ? `+${delta}` : delta} pts)
+              </span>
+            </div>
+            <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+              <div
+                style={{
+                  width: `${Math.min(100, Math.max(4, proof.afterScore))}%`,
+                  height: '100%',
+                  background: proof.type === 'reset' ? '#34d399' : 'linear-gradient(90deg, #f59e0b 0%, #f43f5e 100%)',
+                  transition: 'width 0.6s cubic-bezier(0.22, 1, 0.36, 1)',
+                }}
+              />
             </div>
           </div>
 
-          {/* Raw OS Execution Log */}
           {proof.output && (
             <div className="mono" style={{ fontSize: 11, padding: '8px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <Terminal size={13} color="var(--accent)" />
@@ -490,7 +488,6 @@ export default function AttackSimulator({ src = 'both', onUpdate }) {
             </div>
           )}
 
-          {/* Detailed Artifact & Rule Breakdown */}
           {proof.type === 'attack' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
               <div style={{ padding: 12, borderRadius: 9, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(56, 189, 248, 0.22)' }}>
@@ -541,6 +538,33 @@ export default function AttackSimulator({ src = 'both', onUpdate }) {
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+function PipelineCard({ delay, step, color, title, sub, icon }) {
+  return (
+    <div
+      className="bas-step"
+      style={{
+        animationDelay: delay,
+        padding: '10px 12px',
+        borderRadius: 9,
+        background: `${color}14`,
+        border: `1px solid ${color}55`,
+        minWidth: 0,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+        <span className="mono" style={{ fontSize: 9, fontWeight: 700, color }}>{step}</span>
+        {icon}
+      </div>
+      <div className="mono" style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {title}
+      </div>
+      <div className="dim" style={{ fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {sub}
+      </div>
     </div>
   )
 }
