@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   ShieldAlert,
   Play,
@@ -24,6 +24,7 @@ import {
   Sparkles,
   ArrowRight,
   Monitor,
+  Info,
 } from 'lucide-react'
 import { api } from '../api'
 import { useScan } from '../hooks/useScan'
@@ -136,7 +137,18 @@ const REAL_PC_RESOURCE_TEMPLATES = [
   { name: 'Config File Lock', sub: 'watchlist.conf · flock' },
 ]
 
-// Local DFS fallback for instant cycle detection in Custom Sandbox
+const INITIAL_CUSTOM_NODES = [
+  { id: 'P1', short: 'P1', type: 'process', label: 'Process P1', sub: 'User Task #1' },
+  { id: 'P2', short: 'P2', type: 'process', label: 'Process P2', sub: 'User Task #2' },
+  { id: 'R1', short: 'R_1', type: 'resource', label: 'SQLite DB Lock', sub: 'Rank #1 · Exclusive', rank: 1 },
+  { id: 'R2', short: 'R_2', type: 'resource', label: 'Port 8000 Socket', sub: 'Rank #2 · Exclusive', rank: 2 },
+]
+
+const INITIAL_CUSTOM_EDGES = [
+  { from: 'R1', to: 'P1', kind: 'hold', label: 'HOLDS R_1' },
+  { from: 'R2', to: 'P2', kind: 'hold', label: 'HOLDS R_2' },
+]
+
 function localDetectCycle(graph) {
   const visited = new Set()
   const stack = []
@@ -164,7 +176,7 @@ function localDetectCycle(graph) {
 }
 
 const glassCardStyle = {
-  background: 'rgba(20, 22, 30, 0.64)',
+  background: 'rgba(20, 22, 30, 0.66)',
   backdropFilter: 'blur(18px)',
   WebkitBackdropFilter: 'blur(18px)',
   border: '1px solid rgba(255, 255, 255, 0.11)',
@@ -174,14 +186,14 @@ const glassCardStyle = {
 }
 
 export default function Deadlock({ src }) {
-  // Lab Mode: 'kernel' (real POSIX flock) | 'custom' (Live PC & Custom Rule-Breaker Sandbox)
-  const [labMode, setLabMode] = useState('kernel')
+  const [labMode, setLabMode] = useState('kernel') // 'kernel' | 'custom'
   const [activeMode, setActiveMode] = useState('idle') // 'idle' | 'deadlock' | 'prevented' | 'resolved'
   const [statusData, setStatusData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('simulator') // 'simulator' | 'code' | 'theory'
   const [codeType, setCodeType] = useState('create')
   const [copied, setCopied] = useState(false)
+  const [actionNote, setActionNote] = useState(null) // { tone: 'info'|'warn'|'ok'|'err', text: string }
 
   // Live PC Processes for Custom Sandbox
   const { data: procScan, loading: procLoading, run: refreshProcs } = useScan('process', src || 'windows', true)
@@ -192,26 +204,32 @@ export default function Deadlock({ src }) {
       .slice(0, 12)
   }, [procScan])
 
-  // Custom Sandbox State (Processes, Resources, Edges, Detected Cycle)
-  const [customNodes, setCustomNodes] = useState([
-    { id: 'P1', short: 'P1', type: 'process', label: 'Process P1', sub: 'User Task #1' },
-    { id: 'P2', short: 'P2', type: 'process', label: 'Process P2', sub: 'User Task #2' },
-    { id: 'R1', short: 'R_1', type: 'resource', label: 'SQLite DB Lock', sub: 'Rank #1 · Exclusive', rank: 1 },
-    { id: 'R2', short: 'R_2', type: 'resource', label: 'Port 8000 Socket', sub: 'Rank #2 · Exclusive', rank: 2 },
-  ])
-  const [customEdges, setCustomEdges] = useState([
-    { from: 'R1', to: 'P1', kind: 'hold', label: 'HOLDS' },
-    { from: 'R2', to: 'P2', kind: 'hold', label: 'HOLDS' },
-  ])
+  // Custom Sandbox State
+  const [customNodes, setCustomNodes] = useState(INITIAL_CUSTOM_NODES)
+  const [customEdges, setCustomEdges] = useState(INITIAL_CUSTOM_EDGES)
   const [customCycle, setCustomCycle] = useState(null)
-  const [customState, setCustomState] = useState('idle') // 'idle' | 'deadlock' | 'prevented' | 'resolved'
+  const [customState, setCustomState] = useState('idle')
+  const skipNextEvalRef = useRef(false)
 
-  // Custom Add/Edge Form Inputs
+  // Clean bipartite selectors (Process <-> Resource)
+  const customProcs = useMemo(() => customNodes.filter(n => n.type === 'process'), [customNodes])
+  const customRess = useMemo(() => customNodes.filter(n => n.type === 'resource'), [customNodes])
+
   const [newProcName, setNewProcName] = useState('')
   const [newResName, setNewResName] = useState('')
-  const [edgeFrom, setEdgeFrom] = useState('P1')
+  const [selectedProc, setSelectedProc] = useState('P1')
   const [edgeKind, setEdgeKind] = useState('wait') // 'wait' | 'hold'
-  const [edgeTo, setEdgeTo] = useState('R2')
+  const [selectedRes, setSelectedRes] = useState('R2')
+
+  // Keep dropdown selections valid when nodes are added/removed
+  useEffect(() => {
+    if (customProcs.length > 0 && !customProcs.some(p => p.id === selectedProc)) {
+      setSelectedProc(customProcs[0].id)
+    }
+    if (customRess.length > 0 && !customRess.some(r => r.id === selectedRes)) {
+      setSelectedRes(customRess[0].id)
+    }
+  }, [customProcs, customRess, selectedProc, selectedRes])
 
   // Banker's Algorithm State
   const [bankerInput, setBankerInput] = useState(SAFE_BANKER_PRESET)
@@ -234,7 +252,7 @@ export default function Deadlock({ src }) {
     fetchStatus()
   }, [fetchStatus])
 
-  // Evaluate Custom Graph via Backend /api/deadlock/wfg (with local DFS fallback)
+  // Evaluate Custom Graph via Backend /api/deadlock/wfg
   const evaluateCustomGraph = useCallback(async edgesList => {
     const graph = {}
     edgesList.forEach(e => {
@@ -263,27 +281,42 @@ export default function Deadlock({ src }) {
   }, [])
 
   useEffect(() => {
-    if (labMode === 'custom') {
-      evaluateCustomGraph(customEdges)
+    if (labMode !== 'custom') return
+    if (skipNextEvalRef.current) {
+      skipNextEvalRef.current = false
+      return
     }
+    evaluateCustomGraph(customEdges)
   }, [labMode, customEdges, evaluateCustomGraph])
 
   const runAction = async action => {
     setLoading(true)
+    setActionNote(null)
     try {
       const res = await api.post(`/api/deadlock/action/${action}?source=${src || 'linux'}`)
+      if (res?.error) {
+        setActionNote({ tone: 'err', text: `OS Script Error: ${res.error}` })
+        return
+      }
       if (res) {
         setStatusData(res)
-        if (action === 'create') setActiveMode('deadlock')
-        else if (action === 'prevent') setActiveMode('prevented')
-        else if (action === 'resolve') setActiveMode('resolved')
-        else if (action === 'cleanup') {
+        if (action === 'create') {
+          setActiveMode('deadlock')
+          setActionNote({ tone: 'err', text: 'Real OS Deadlock triggered: P1 and P2 are mutually blocked on exclusive locks.' })
+        } else if (action === 'prevent') {
+          setActiveMode('prevented')
+          setActionNote({ tone: 'ok', text: 'Dijkstra Resource Hierarchy enforced: both processes acquired locks in ascending order.' })
+        } else if (action === 'resolve') {
+          setActiveMode('resolved')
+          setActionNote({ tone: 'warn', text: 'Victim process preempted and terminated — survivor P1 unblocked and finished.' })
+        } else if (action === 'cleanup') {
           setActiveMode('idle')
           setStatusData(null)
+          setActionNote({ tone: 'info', text: 'OS Lab locks and processes cleaned up.' })
         }
       }
     } catch (err) {
-      console.error('Deadlock action failed:', err)
+      setActionNote({ tone: 'err', text: `Action failed: ${err?.message || 'Backend unreachable'}` })
     } finally {
       setLoading(false)
     }
@@ -293,55 +326,75 @@ export default function Deadlock({ src }) {
   const addCustomProcess = (labelOverride, subOverride) => {
     const name = (labelOverride || newProcName).trim()
     if (!name) return
-    const nextIdx = customNodes.filter(n => n.type === 'process').length + 1
+    const nextIdx = customProcs.length + 1
     const id = `P_${Date.now().toString().slice(-4)}_${nextIdx}`
     const short = name.replace(/\.exe$/i, '').slice(0, 7)
     setCustomNodes(prev => [
       ...prev,
       { id, short, type: 'process', label: name, sub: subOverride || 'Custom Process' },
     ])
+    setSelectedProc(id)
+    setActionNote({ tone: 'info', text: `Added Process "${name}" to the graph.` })
     if (!labelOverride) setNewProcName('')
   }
 
   const addCustomResource = (labelOverride, subOverride) => {
     const name = (labelOverride || newResName).trim()
     if (!name) return
-    const nextRank = customNodes.filter(n => n.type === 'resource').length + 1
+    const nextRank = customRess.length + 1
     const id = `R_${Date.now().toString().slice(-4)}_${nextRank}`
     setCustomNodes(prev => [
       ...prev,
       { id, short: `R_${nextRank}`, type: 'resource', label: name, sub: subOverride || `Rank #${nextRank} · Lock`, rank: nextRank },
     ])
+    setSelectedRes(id)
+    setActionNote({ tone: 'info', text: `Added Resource "${name}" (Rank #${nextRank}).` })
     if (!labelOverride) setNewResName('')
   }
 
   const removeCustomNode = nodeId => {
+    const target = customNodes.find(n => n.id === nodeId)
     setCustomNodes(prev => prev.filter(n => n.id !== nodeId))
     setCustomEdges(prev => prev.filter(e => e.from !== nodeId && e.to !== nodeId))
+    if (target) setActionNote({ tone: 'info', text: `Removed "${target.label}" and its connected edges.` })
   }
 
   const addCustomEdge = () => {
-    if (!edgeFrom || !edgeTo || edgeFrom === edgeTo) return
-    const fromNode = customNodes.find(n => n.id === edgeFrom)
-    const toNode = customNodes.find(n => n.id === edgeTo)
-    if (!fromNode || !toNode) return
+    if (!selectedProc || !selectedRes) return
+    const procNode = customNodes.find(n => n.id === selectedProc)
+    const resNode = customNodes.find(n => n.id === selectedRes)
+    if (!procNode || !resNode) return
 
-    // Enforce bipartite RAG direction: Hold = Resource -> Process, Wait = Process -> Resource
-    const actualFrom = edgeKind === 'hold' && fromNode.type === 'process' && toNode.type === 'resource' ? edgeTo : edgeFrom
-    const actualTo = edgeKind === 'hold' && fromNode.type === 'process' && toNode.type === 'resource' ? edgeFrom : edgeTo
+    // Enforce OS Mutual Exclusion: an exclusive resource cannot be HELD by two processes simultaneously
+    if (edgeKind === 'hold') {
+      const existingHolder = customEdges.find(e => e.from === selectedRes && e.kind === 'hold')
+      if (existingHolder && existingHolder.to !== selectedProc) {
+        const holderNode = customNodes.find(n => n.id === existingHolder.to)
+        // Automatically convert to a WAIT edge because the lock is already taken!
+        setCustomEdges(prev => {
+          if (prev.some(e => e.from === selectedProc && e.to === selectedRes && e.kind === 'wait')) return prev
+          return [...prev, { from: selectedProc, to: selectedRes, kind: 'wait', label: `WAITS ${resNode.short}` }]
+        })
+        setActionNote({
+          tone: 'warn',
+          text: `Mutual Exclusion: "${resNode.label}" is already held by "${holderNode?.label || existingHolder.to}". "${procNode.label}" must WAIT for it!`,
+        })
+        return
+      }
+      setCustomEdges(prev => {
+        if (prev.some(e => e.from === selectedRes && e.to === selectedProc && e.kind === 'hold')) return prev
+        return [...prev, { from: selectedRes, to: selectedProc, kind: 'hold', label: `HOLDS ${resNode.short}` }]
+      })
+      setActionNote({ tone: 'ok', text: `"${procNode.label}" acquired lock "${resNode.label}".` })
+      return
+    }
 
+    // Wait edge: Process -> Resource
     setCustomEdges(prev => {
-      if (prev.some(e => e.from === actualFrom && e.to === actualTo && e.kind === edgeKind)) return prev
-      return [
-        ...prev,
-        {
-          from: actualFrom,
-          to: actualTo,
-          kind: edgeKind,
-          label: edgeKind === 'hold' ? 'HOLDS' : 'WAITS (BREAK)',
-        },
-      ]
+      if (prev.some(e => e.from === selectedProc && e.to === selectedRes && e.kind === 'wait')) return prev
+      return [...prev, { from: selectedProc, to: selectedRes, kind: 'wait', label: `WAITS ${resNode.short}` }]
     })
+    setActionNote({ tone: 'warn', text: `"${procNode.label}" is now waiting for "${resNode.label}".` })
   }
 
   const removeCustomEdge = idx => {
@@ -349,43 +402,74 @@ export default function Deadlock({ src }) {
   }
 
   const triggerCustomRuleBreak = () => {
-    const procs = customNodes.filter(n => n.type === 'process')
-    const ress = customNodes.filter(n => n.type === 'resource')
-    if (procs.length < 2 || ress.length < 2) return
-    const p1 = procs[0].id
-    const p2 = procs[1].id
-    const r1 = ress[0].id
-    const r2 = ress[1].id
+    if (customProcs.length < 2 || customRess.length < 2) {
+      setActionNote({ tone: 'err', text: 'Add at least 2 Processes and 2 Resources to create a Circular Wait deadlock.' })
+      return
+    }
+    const p1 = customProcs[0]
+    const p2 = customProcs[1]
+    const r1 = customRess[0]
+    const r2 = customRess[1]
     setCustomEdges([
-      { from: r1, to: p1, kind: 'hold', label: `HOLDS ${ress[0].short}` },
-      { from: p1, to: r2, kind: 'wait', label: `WAITS ${ress[1].short}` },
-      { from: r2, to: p2, kind: 'hold', label: `HOLDS ${ress[1].short}` },
-      { from: p2, to: r1, kind: 'wait', label: `WAITS ${ress[0].short}` },
+      { from: r1.id, to: p1.id, kind: 'hold', label: `HOLDS ${r1.short}` },
+      { from: p1.id, to: r2.id, kind: 'wait', label: `WAITS ${r2.short}` },
+      { from: r2.id, to: p2.id, kind: 'hold', label: `HOLDS ${r2.short}` },
+      { from: p2.id, to: r1.id, kind: 'wait', label: `WAITS ${r1.short}` },
     ])
+    setActionNote({
+      tone: 'err',
+      text: `Rule Broken: ${p1.label} holds ${r1.label} & waits for ${r2.label}, while ${p2.label} holds ${r2.label} & waits for ${r1.label} → DEADLOCK!`,
+    })
   }
 
   const applyCustomPrevention = () => {
-    const procs = customNodes.filter(n => n.type === 'process')
-    const ress = customNodes.filter(n => n.type === 'resource')
-    if (procs.length === 0 || ress.length === 0) return
+    if (customProcs.length === 0 || customRess.length === 0) return
+    const p1 = customProcs[0]
     const ordered = []
-    ress.forEach((r, idx) => {
+    customRess.forEach((r, idx) => {
       ordered.push({
         from: r.id,
-        to: procs[0].id,
+        to: p1.id,
         kind: idx === 0 ? 'hold' : 'order',
-        label: `Rank #${idx + 1} Safe`,
+        label: `Rank #${idx + 1} → ${p1.short}`,
       })
     })
+    if (customProcs.length >= 2) {
+      // P2 must request Rank #1 first without holding higher-rank locks!
+      ordered.push({
+        from: customProcs[1].id,
+        to: customRess[0].id,
+        kind: 'order',
+        label: `Waits Rank #1 (Safe)`,
+      })
+    }
     setCustomEdges(ordered)
+    setActionNote({
+      tone: 'ok',
+      text: 'Dijkstra Ordering Applied: All processes request locks in ascending rank (#1 → #2), making Circular Wait impossible.',
+    })
   }
 
   const preemptCustomVictim = () => {
     if (!customCycle || customCycle.length === 0) return
     const victimProc = customNodes.find(n => n.type === 'process' && customCycle.includes(n.id))
     if (!victimProc) return
+    skipNextEvalRef.current = true
     setCustomEdges(prev => prev.filter(e => e.from !== victimProc.id && e.to !== victimProc.id))
+    setCustomCycle(null)
     setCustomState('resolved')
+    setActionNote({
+      tone: 'warn',
+      text: `Victim "${victimProc.label}" preempted! Its held locks were released so remaining processes can finish.`,
+    })
+  }
+
+  const resetCustomSandbox = () => {
+    setCustomNodes(INITIAL_CUSTOM_NODES)
+    setCustomEdges(INITIAL_CUSTOM_EDGES)
+    setCustomCycle(null)
+    setCustomState('idle')
+    setActionNote({ tone: 'info', text: 'Custom Sandbox reset to default processes and locks.' })
   }
 
   const solveBanker = async () => {
@@ -394,7 +478,7 @@ export default function Deadlock({ src }) {
       const res = await api.post('/api/deadlock/banker', bankerInput)
       setBankerResult(res)
     } catch (err) {
-      console.error('Bankers calculation failed:', err)
+      setActionNote({ tone: 'err', text: `Banker's calculation failed: ${err?.message || 'error'}` })
     } finally {
       setBankerLoading(false)
     }
@@ -415,6 +499,16 @@ export default function Deadlock({ src }) {
   const isPrevented = effectiveMode === 'prevented'
   const isResolved = effectiveMode === 'resolved'
 
+  // Accurate Coffman Hold & Wait check in Custom Mode
+  const customHoldAndWait = useMemo(() => {
+    if (labMode !== 'custom') return isDeadlock
+    const holdingProcs = new Set(customEdges.filter(e => e.kind === 'hold').map(e => e.to))
+    const waitingProcs = new Set(customEdges.filter(e => e.kind === 'wait').map(e => e.from))
+    return [...holdingProcs].some(p => waitingProcs.has(p))
+  }, [labMode, customEdges, isDeadlock])
+
+  const hasMutualExclusion = labMode === 'custom' ? customRess.length > 0 && customEdges.some(e => e.kind === 'hold') : true
+
   const statusBadge = isDeadlock
     ? { v: 'DEADLOCK ACTIVE', tone: 'r' }
     : isPrevented
@@ -434,9 +528,6 @@ export default function Deadlock({ src }) {
   const needMatrix = bankerInput.maximum.map((row, i) =>
     row.map((val, j) => Math.max(0, val - (bankerInput.allocation[i]?.[j] || 0)))
   )
-
-  const customProcs = customNodes.filter(n => n.type === 'process')
-  const customRess = customNodes.filter(n => n.type === 'resource')
 
   return (
     <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -466,18 +557,10 @@ export default function Deadlock({ src }) {
           position: 'relative',
           zIndex: 1,
           borderLeft: `4px solid ${accentBorderColor}`,
-          background: 'linear-gradient(135deg, rgba(22, 25, 36, 0.78) 0%, rgba(16, 185, 129, 0.06) 100%)',
+          background: 'linear-gradient(135deg, rgba(22, 25, 36, 0.8) 0%, rgba(16, 185, 129, 0.06) 100%)',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 16,
-          }}
-        >
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
               <div
@@ -502,12 +585,12 @@ export default function Deadlock({ src }) {
               <Badge v={statusBadge.v} tone={statusBadge.tone} />
             </div>
             <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
-              Real OS POSIX lock simulation, Live PC Custom Rule-Breaker Sandbox, Dijkstra&apos;s Ordering, and Banker&apos;s Algorithm.
+              Real OS lock simulation, Live PC Custom Rule-Breaker Sandbox, Dijkstra&apos;s Ordering, and Banker&apos;s Algorithm.
             </p>
           </div>
 
-          {/* Mode Toggle + Action Buttons */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
+            {/* Mode Switcher */}
             <div
               style={{
                 display: 'inline-flex',
@@ -519,7 +602,10 @@ export default function Deadlock({ src }) {
               }}
             >
               <button
-                onClick={() => setLabMode('kernel')}
+                onClick={() => {
+                  setLabMode('kernel')
+                  setActionNote(null)
+                }}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -534,10 +620,13 @@ export default function Deadlock({ src }) {
                   color: labMode === 'kernel' ? '#34d399' : 'var(--dim)',
                 }}
               >
-                <Terminal size={13} /> OS Kernel (POSIX flock)
+                <Terminal size={13} /> OS Kernel Lab
               </button>
               <button
-                onClick={() => setLabMode('custom')}
+                onClick={() => {
+                  setLabMode('custom')
+                  setActionNote(null)
+                }}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -634,13 +723,52 @@ export default function Deadlock({ src }) {
                 >
                   <Zap size={14} /> Preempt Victim
                 </Btn>
+                <Btn onClick={resetCustomSandbox} title="Reset Custom Graph">
+                  <RotateCcw size={14} /> Reset
+                </Btn>
               </div>
             )}
           </div>
         </div>
+
+        {/* Live Action Feedback Strip */}
+        {actionNote && (
+          <div
+            style={{
+              marginTop: 12,
+              padding: '8px 12px',
+              borderRadius: 8,
+              fontSize: 12,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              background:
+                actionNote.tone === 'err'
+                  ? 'rgba(244, 63, 94, 0.14)'
+                  : actionNote.tone === 'ok'
+                  ? 'rgba(16, 185, 129, 0.14)'
+                  : actionNote.tone === 'warn'
+                  ? 'rgba(245, 158, 11, 0.14)'
+                  : 'rgba(56, 189, 248, 0.14)',
+              border: `1px solid ${
+                actionNote.tone === 'err'
+                  ? 'rgba(244, 63, 94, 0.35)'
+                  : actionNote.tone === 'ok'
+                  ? 'rgba(16, 185, 129, 0.35)'
+                  : actionNote.tone === 'warn'
+                  ? 'rgba(245, 158, 11, 0.35)'
+                  : 'rgba(56, 189, 248, 0.35)'
+              }`,
+              color: 'var(--fg)',
+            }}
+          >
+            <Info size={14} />
+            <span>{actionNote.text}</span>
+          </div>
+        )}
       </div>
 
-      {/* ── Custom & Real-PC Deadlock Builder Panel (shown in Custom Sandbox mode) ── */}
+      {/* ── Custom & Real-PC Deadlock Builder Panel (Clean 3-Step Format) ── */}
       {labMode === 'custom' && (
         <div
           style={{
@@ -648,14 +776,14 @@ export default function Deadlock({ src }) {
             position: 'relative',
             zIndex: 1,
             borderColor: 'rgba(167, 139, 250, 0.32)',
-            background: 'linear-gradient(135deg, rgba(24, 24, 38, 0.72) 0%, rgba(56, 189, 248, 0.05) 100%)',
+            background: 'linear-gradient(135deg, rgba(24, 24, 38, 0.74) 0%, rgba(56, 189, 248, 0.05) 100%)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Monitor size={16} color="#c4b5fd" />
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg)' }}>
-                Custom &amp; Live PC Process / Resource Builder
+                3-Step Live PC &amp; Custom Deadlock Builder
               </span>
               <Badge v="REAL PC DATA" tone="p" />
             </div>
@@ -664,18 +792,17 @@ export default function Deadlock({ src }) {
             </Btn>
           </div>
 
-          {/* 3-Column Glass Builder Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
-            {/* 1. Live PC Processes Picker + Custom Add */}
-            <div style={{ padding: 12, borderRadius: 10, background: 'rgba(10, 12, 18, 0.55)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(265px, 1fr))', gap: 14 }}>
+            {/* Step 1: Processes */}
+            <div style={{ padding: 14, borderRadius: 11, background: 'rgba(10, 12, 18, 0.58)', border: '1px solid rgba(56, 189, 248, 0.22)' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8', marginBottom: 8 }}>
-                1. ADD PROCESS (LIVE PC OR CUSTOM)
+                STEP 1 · PICK OR ADD PROCESSES
               </div>
               <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
                 <input
                   className="in"
                   style={{ flex: 1, marginRight: 0 }}
-                  placeholder="e.g. chrome.exe or P3"
+                  placeholder="Custom name (e.g. chrome.exe)"
                   value={newProcName}
                   onChange={e => setNewProcName(e.target.value)}
                 />
@@ -684,9 +811,9 @@ export default function Deadlock({ src }) {
                 </Btn>
               </div>
               <div style={{ fontSize: 10, color: 'var(--dim)', marginBottom: 6 }}>
-                Click any live PC process to import into graph:
+                Live running PC processes (click to add):
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, maxHeight: 84, overflowY: 'auto' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, maxHeight: 88, overflowY: 'auto' }}>
                 {liveProcesses.length === 0 ? (
                   <span style={{ fontSize: 11, color: 'var(--dim)' }}>No live scan rows yet</span>
                 ) : (
@@ -700,7 +827,7 @@ export default function Deadlock({ src }) {
                         borderRadius: 6,
                         fontSize: 10,
                         background: 'rgba(56, 189, 248, 0.12)',
-                        border: '1px solid rgba(56, 189, 248, 0.28)',
+                        border: '1px solid rgba(56, 189, 248, 0.3)',
                         color: '#7dd3fc',
                         cursor: 'pointer',
                       }}
@@ -712,16 +839,16 @@ export default function Deadlock({ src }) {
               </div>
             </div>
 
-            {/* 2. Resources Picker + Custom Add */}
-            <div style={{ padding: 12, borderRadius: 10, background: 'rgba(10, 12, 18, 0.55)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            {/* Step 2: Resources */}
+            <div style={{ padding: 14, borderRadius: 11, background: 'rgba(10, 12, 18, 0.58)', border: '1px solid rgba(167, 139, 250, 0.22)' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#a78bfa', marginBottom: 8 }}>
-                2. ADD RESOURCE LOCK (RANKED)
+                STEP 2 · ADD RESOURCE LOCKS (RANKED)
               </div>
               <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
                 <input
                   className="in"
                   style={{ flex: 1, marginRight: 0 }}
-                  placeholder="e.g. File Mutex or R3"
+                  placeholder="Custom lock (e.g. File Mutex)"
                   value={newResName}
                   onChange={e => setNewResName(e.target.value)}
                 />
@@ -730,7 +857,7 @@ export default function Deadlock({ src }) {
                 </Btn>
               </div>
               <div style={{ fontSize: 10, color: 'var(--dim)', marginBottom: 6 }}>
-                Quick PC system locks:
+                Common PC system locks (click to add):
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                 {REAL_PC_RESOURCE_TEMPLATES.map(r => (
@@ -743,7 +870,7 @@ export default function Deadlock({ src }) {
                       borderRadius: 6,
                       fontSize: 10,
                       background: 'rgba(167, 139, 250, 0.12)',
-                      border: '1px solid rgba(167, 139, 250, 0.28)',
+                      border: '1px solid rgba(167, 139, 250, 0.3)',
                       color: '#ddd6fe',
                       cursor: 'pointer',
                     }}
@@ -754,46 +881,48 @@ export default function Deadlock({ src }) {
               </div>
             </div>
 
-            {/* 3. Add / Remove Edges (Create Rules or Break Rules) */}
-            <div style={{ padding: 12, borderRadius: 10, background: 'rgba(10, 12, 18, 0.55)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            {/* Step 3: Clean Bipartite Rule Connector */}
+            <div style={{ padding: 14, borderRadius: 11, background: 'rgba(10, 12, 18, 0.58)', border: '1px solid rgba(245, 158, 11, 0.24)' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24', marginBottom: 8 }}>
-                3. CONNECT HOLD / WAIT EDGES
+                STEP 3 · ASSIGN HOLD OR WAIT RULE
               </div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 8 }}>
                 <select
                   className="in"
-                  style={{ flex: 1, marginRight: 0, minWidth: 85 }}
-                  value={edgeFrom}
-                  onChange={e => setEdgeFrom(e.target.value)}
+                  style={{ marginRight: 0, width: '100%' }}
+                  value={selectedProc}
+                  onChange={e => setSelectedProc(e.target.value)}
                 >
-                  {customNodes.map(n => (
-                    <option key={n.id} value={n.id}>{n.label}</option>
+                  {customProcs.map(p => (
+                    <option key={p.id} value={p.id}>Proc: {p.label}</option>
                   ))}
                 </select>
                 <select
                   className="in"
-                  style={{ marginRight: 0 }}
+                  style={{ marginRight: 0, width: '100%' }}
+                  value={selectedRes}
+                  onChange={e => setSelectedRes(e.target.value)}
+                >
+                  {customRess.map(r => (
+                    <option key={r.id} value={r.id}>Lock: {r.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                <select
+                  className="in"
+                  style={{ flex: 1, marginRight: 0 }}
                   value={edgeKind}
                   onChange={e => setEdgeKind(e.target.value)}
                 >
-                  <option value="wait">WAITS FOR (P → R)</option>
-                  <option value="hold">HOLDS (R → P)</option>
-                </select>
-                <select
-                  className="in"
-                  style={{ flex: 1, marginRight: 0, minWidth: 85 }}
-                  value={edgeTo}
-                  onChange={e => setEdgeTo(e.target.value)}
-                >
-                  {customNodes.map(n => (
-                    <option key={n.id} value={n.id}>{n.label}</option>
-                  ))}
+                  <option value="hold">Process HOLDS Lock (R → P)</option>
+                  <option value="wait">Process WAITS FOR Lock (P → R)</option>
                 </select>
                 <Btn variant="primary" onClick={addCustomEdge}>
-                  <Plus size={13} /> Link
+                  <Plus size={13} /> Connect
                 </Btn>
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, maxHeight: 72, overflowY: 'auto' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, maxHeight: 62, overflowY: 'auto' }}>
                 {customEdges.map((e, idx) => {
                   const fn = customNodes.find(n => n.id === e.from)?.short || e.from
                   const tn = customNodes.find(n => n.id === e.to)?.short || e.to
@@ -827,7 +956,7 @@ export default function Deadlock({ src }) {
             </div>
           </div>
 
-          {/* Active Nodes Chips with Remove */}
+          {/* Active Nodes Chips */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
             <span style={{ fontSize: 11, color: 'var(--dim)', alignSelf: 'center', marginRight: 4 }}>Active Graph Nodes:</span>
             {customNodes.map(n => (
@@ -895,7 +1024,6 @@ export default function Deadlock({ src }) {
             height={460}
           />
 
-          {/* Live Telemetry & Sequence Rule Strip */}
           <div
             style={{
               ...glassCardStyle,
@@ -928,7 +1056,7 @@ export default function Deadlock({ src }) {
           </div>
         </div>
 
-        {/* Right: Coffman Conditions + Kernel Lock Registry */}
+        {/* Right: Coffman Conditions + Hierarchy Sequence */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={glassCardStyle}>
             <h4 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: 'var(--fg)', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 8 }}>
@@ -942,18 +1070,18 @@ export default function Deadlock({ src }) {
               <CoffmanRow
                 icon={<Lock size={15} color="#34d399" />}
                 title="1. Mutual Exclusion"
-                badge={<Badge v="ACTIVE" tone="r" />}
+                badge={<Badge v={hasMutualExclusion ? 'ACTIVE' : 'STANDBY'} tone={hasMutualExclusion ? 'r' : 'c'} />}
                 accent="#34d399"
                 desc="Locks are exclusive; only one process can hold a lock at a time."
               />
               <CoffmanRow
-                icon={<AlertTriangle size={15} color={isDeadlock ? '#fb7185' : '#85858b'} />}
+                icon={<AlertTriangle size={15} color={customHoldAndWait ? '#fb7185' : '#85858b'} />}
                 title="2. Hold & Wait"
-                badge={<Badge v={isDeadlock ? 'ACTIVE' : 'INACTIVE'} tone={isDeadlock ? 'r' : 'g'} />}
-                accent={isDeadlock ? '#fb7185' : '#4cc38a'}
+                badge={<Badge v={customHoldAndWait ? 'ACTIVE' : 'INACTIVE'} tone={customHoldAndWait ? 'r' : 'g'} />}
+                accent={customHoldAndWait ? '#fb7185' : '#4cc38a'}
                 desc={
-                  isDeadlock
-                    ? 'Processes hold at least one lock while waiting for another held lock.'
+                  customHoldAndWait
+                    ? 'At least one process holds a lock while waiting for another held lock.'
                     : 'Processes release or do not hold resources while waiting.'
                 }
               />
@@ -1063,7 +1191,7 @@ export default function Deadlock({ src }) {
           />
         </div>
 
-        {/* Tab 1: Banker's Algorithm + Unique Step-by-Step Sequence Timeline */}
+        {/* Tab 1: Banker's Algorithm + Step-by-Step Sequence Timeline */}
         {activeTab === 'simulator' && (
           <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -1101,7 +1229,6 @@ export default function Deadlock({ src }) {
               </div>
             </div>
 
-            {/* Matrix Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
               <div style={{ padding: 14, borderRadius: 10, background: 'rgba(10, 12, 18, 0.55)', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: '#34d399', marginBottom: 10 }}>
@@ -1177,7 +1304,6 @@ export default function Deadlock({ src }) {
                   )}
                 </div>
 
-                {/* Unique Step-by-Step Execution Sequence Cards */}
                 {Array.isArray(bankerResult.steps) && bankerResult.steps.length > 0 && (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10 }}>
                     {bankerResult.steps.map((st, idx) => (

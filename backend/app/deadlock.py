@@ -135,7 +135,8 @@ def run_deadlock_action(action: str, source: str = "linux") -> dict[str, Any]:
 
     'cleanup'.
     """
-    is_win = platform.system().lower() == "windows" and source == "windows"
+    on_windows = platform.system().lower() == "windows"
+    is_win = on_windows and source in ("windows", "both")
 
     if is_win:
         ps_script = BASH_DEADLOCK / "windows_deadlock.ps1"
@@ -178,7 +179,7 @@ def run_deadlock_action(action: str, source: str = "linux") -> dict[str, Any]:
 
     # Determine bash executable
     bash_bin = "/bin/bash" if Path("/bin/bash").exists() else "bash"
-    if is_win and not Path("/bin/bash").exists():
+    if on_windows and not Path("/bin/bash").exists():
         # Running on Windows with source='linux' -> use wsl or git bash if available, else powershell bridge
         if subprocess.run(["where", "wsl"], capture_output=True).returncode == 0:
             bash_bin = "wsl"
