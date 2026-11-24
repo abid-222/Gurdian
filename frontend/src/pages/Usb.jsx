@@ -19,26 +19,23 @@ export default function Usb({ src }) {
 
   return (
     <div>
-      {/* ── 3D Security Module Banner ── */}
-      <div className="status-banner-3d">
+      {/* ── Hardware Peripherals Header ── */}
+      <div className="card" style={{ padding: '16px 20px', marginBottom: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <UsbIcon size={22} color="var(--c)" />
-              <h3 style={{ margin: 0, color: 'var(--fg)', fontSize: 16 }}>
-                Physical Hardware Bus & USB Peripheral Sentinel
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <UsbIcon size={18} color="var(--dim)" />
+              <h3 style={{ margin: 0, color: 'var(--fg)', fontSize: 16, fontWeight: 600 }}>
+                USB and peripheral devices
               </h3>
-              <Badge v={data?.rows?.length > 0 ? `${data.rows.length} CONNECTED` : 'MONITORED'} tone="g" />
+              <Badge v={data?.rows?.length > 0 ? `${data.rows.length} connected` : 'Monitored'} tone="g" />
             </div>
-            <p className="dim" style={{ fontSize: 13, margin: '4px 0 0', maxWidth: 740, lineHeight: 1.5 }}>
-              Audits hardware buses and Plug-and-Play device trees for unauthorized external peripherals.
-              Maintains an append-only forensic event history to protect against BadUSB, rubber ducky keystroke injectors, and data exfiltration.
+            <p className="dim" style={{ fontSize: 12, margin: '4px 0 0', maxWidth: 740, lineHeight: 1.5 }}>
+              Audits hardware buses and plug-and-play devices for unauthorized external peripherals.
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className="badge c" style={{ fontSize: 11, padding: '4px 10px' }}>
-              Platform: {src.toUpperCase()}
-            </span>
+            <Badge v={`Platform: ${src.toUpperCase()}`} tone="c" />
           </div>
         </div>
       </div>

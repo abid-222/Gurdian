@@ -191,7 +191,7 @@ export default function Terminal() {
       </div>
 
       {/* Quick Launch Commands */}
-      <div className="card-3d card" style={{ marginTop: 12 }}>
+      <div className="card" style={{ marginTop: 12 }}>
         <h4 style={{ margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
           <TerminalIcon size={14} color="var(--c)" /> Quick Shell Commands (Click to Execute)
         </h4>

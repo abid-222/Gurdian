@@ -22,11 +22,11 @@ export const Badge = ({ v, tone }) => {
       className={'badge ' + t}
       style={{
         display: 'inline-block',
-        padding: '2px 10px',
-        borderRadius: '999px',
+        padding: '2px 6px',
+        borderRadius: '4px',
         fontSize: '11px',
-        fontWeight: 600,
-        lineHeight: '1.6',
+        fontWeight: 500,
+        lineHeight: '1.4',
         border: 'none',
       }}
     >
@@ -130,13 +130,13 @@ export const Bar = ({ label, v = 0 }) => {
         marginBottom: '6px',
       }}
     >
-      <span style={{ minWidth: '100px', fontSize: '13px', color: 'var(--text-secondary, #666)' }}>{label}</span>
+      <span style={{ minWidth: '100px', fontSize: '12px', color: 'var(--text-secondary)' }}>{label}</span>
       <div
         style={{
           flex: 1,
-          height: '6px',
-          borderRadius: '999px',
-          background: 'var(--border, #e5e7eb)',
+          height: '4px',
+          borderRadius: '2px',
+          background: 'var(--line)',
           overflow: 'hidden',
         }}
       >
@@ -145,12 +145,12 @@ export const Bar = ({ label, v = 0 }) => {
             width: `${pct}%`,
             height: '100%',
             background: barColor(pct),
-            borderRadius: '999px',
-            transition: 'width 0.4s ease',
+            borderRadius: '2px',
+            transition: 'width 0.2s ease',
           }}
         />
       </div>
-      <span style={{ minWidth: '38px', textAlign: 'right', fontSize: '12px', fontFamily: 'monospace' }}>
+      <span style={{ minWidth: '38px', textAlign: 'right', fontSize: '11px', fontFamily: 'monospace', color: 'var(--fg)' }}>
         {v}%
       </span>
     </div>

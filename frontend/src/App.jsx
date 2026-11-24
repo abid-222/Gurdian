@@ -65,7 +65,7 @@ const VIEWS = {
 // ─── Sidebar structure ───────────────────────────────────────────────────────
 const NAV_GROUPS = [
   {
-    label: 'MONITOR',
+    label: 'Monitor',
     items: [
       { key: 'overview',  icon: LayoutDashboard, label: 'Overview'       },
       { key: 'live',      icon: Activity,        label: 'Live Stream'    },
@@ -73,7 +73,7 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: 'SECURITY',
+    label: 'Security',
     items: [
       { key: 'process',     icon: Cpu,        label: 'Processes'      },
       { key: 'network',     icon: Network,    label: 'Network'        },
@@ -84,7 +84,7 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: 'EVENTS',
+    label: 'Events',
     items: [
       { key: 'alerts',   icon: Bell,         label: 'Alerts'   },
       { key: 'timeline', icon: Clock,        label: 'Timeline' },
@@ -92,7 +92,7 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: 'TOOLS',
+    label: 'Tools',
     items: [
       { key: 'terminal', icon: TerminalIcon, label: 'Terminal' },
       { key: 'demo',     icon: Crosshair,    label: 'Demo Lab' },
@@ -338,38 +338,37 @@ function Main() {
         <header className="top">
           <div className="top-brand">
             <div className="brand-icon-box">
-              <Shield size={18} strokeWidth={2.2} />
+              <Shield size={16} strokeWidth={2} />
             </div>
             <span className="brand-title">Smart OS Guardian</span>
-            <span className="badge p">PRO v6.0</span>
           </div>
 
           <span style={{ flex: 1 }} />
 
           {/* Status dot + risk chip */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 8 }}>
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
-                background: 'rgba(255,255,255,0.04)',
+                background: 'var(--panel-hover)',
                 border: '1px solid var(--line)',
-                padding: '3px 10px',
-                borderRadius: 20
+                padding: '3px 8px',
+                borderRadius: 4
               }}
             >
               <span
                 style={{
-                  width: 7,
-                  height: 7,
+                  width: 6,
+                  height: 6,
                   borderRadius: '50%',
                   background: hasHighAlert ? 'var(--r)' : 'var(--g)',
-                  boxShadow: hasHighAlert ? '0 0 8px var(--r)' : '0 0 8px var(--g)'
+                  display: 'inline-block'
                 }}
               />
-              <span style={{ fontSize: 11, fontWeight: 600, color: hasHighAlert ? 'var(--r)' : 'var(--g)' }}>
-                {hasHighAlert ? 'ALERT ACTIVE' : 'HOST SECURED'}
+              <span style={{ fontSize: 11, fontWeight: 500, color: hasHighAlert ? 'var(--r)' : 'var(--fg)' }}>
+                {hasHighAlert ? 'Alert active' : 'Host secured'}
               </span>
             </div>
 
@@ -379,10 +378,10 @@ function Main() {
                 background: risk.color + '18',
                 color: risk.color,
                 borderColor: risk.color,
-                padding: '3px 10px',
+                padding: '2px 8px',
                 fontSize: 11,
-                fontWeight: 700,
-                borderRadius: 14
+                fontWeight: 500,
+                borderRadius: 4
               }}
             >
               Risk: {score} · {risk.label}
@@ -395,34 +394,28 @@ function Main() {
             onClick={toggleNotify}
             title={notifyOn ? 'Mute pop-up notifications' : 'Enable pop-up notifications'}
             style={{
-              marginRight: 8,
+              marginRight: 6,
               flexShrink: 0,
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 7,
-              background: notifyOn
-                ? 'linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(5,150,105,0.25) 100%)'
-                : 'linear-gradient(135deg, rgba(239,68,68,0.2) 0%, rgba(185,28,28,0.25) 100%)',
-              border: `1.5px solid ${notifyOn ? 'rgba(16,185,129,0.6)' : 'rgba(239,68,68,0.6)'}`,
-              color: notifyOn ? '#34d399' : '#f87171',
-              fontWeight: 700,
-              padding: '4px 11px',
-              borderRadius: 20,
-              boxShadow: notifyOn ? '0 0 12px rgba(16,185,129,0.3)' : '0 0 12px rgba(239,68,68,0.3)',
+              gap: 6,
+              background: 'var(--panel-hover)',
+              borderColor: 'var(--line)',
+              color: notifyOn ? 'var(--fg)' : 'var(--dim)',
+              padding: '3px 8px',
+              borderRadius: 4,
               cursor: 'pointer'
             }}
           >
             {notifyOn ? (
               <>
-                <Bell size={14} color="#34d399" />
-                <span style={{ fontSize: 11, fontWeight: 700 }}>Alerts ON</span>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#34d399', display: 'inline-block', boxShadow: '0 0 8px #34d399' }} />
+                <Bell size={13} color="var(--g)" />
+                <span style={{ fontSize: 11 }}>Alerts on</span>
               </>
             ) : (
               <>
-                <BellOff size={14} color="#f87171" />
-                <span style={{ fontSize: 11, fontWeight: 700 }}>Alerts OFF</span>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f87171', display: 'inline-block' }} />
+                <BellOff size={13} color="var(--dim)" />
+                <span style={{ fontSize: 11 }}>Alerts muted</span>
               </>
             )}
           </button>
@@ -433,22 +426,24 @@ function Main() {
             onClick={() => setTheme(theme === 'light' ? 'ubuntu' : 'light')}
             title="Toggle Dark / Light Mode"
             style={{
-              marginRight: 8,
+              marginRight: 6,
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              background: theme === 'light' ? 'rgba(233,84,32,0.1)' : 'rgba(255,255,255,0.06)',
-              borderColor: theme === 'light' ? 'var(--accent)' : 'var(--line)',
-              color: theme === 'light' ? 'var(--accent)' : 'var(--fg)'
+              background: 'var(--panel-hover)',
+              borderColor: 'var(--line)',
+              color: 'var(--fg)',
+              padding: '3px 8px',
+              borderRadius: 4
             }}
           >
             {theme === 'light' ? (
               <>
-                <Moon size={13} /> <span>Dark Mode</span>
+                <Moon size={13} /> <span>Dark</span>
               </>
             ) : (
               <>
-                <Sun size={13} color="#f59e0b" /> <span>Light Mode</span>
+                <Sun size={13} color="var(--a)" /> <span>Light</span>
               </>
             )}
           </button>
@@ -459,13 +454,13 @@ function Main() {
             onChange={e => setTheme(e.target.value)}
             aria-label="Theme selector"
             style={{
-              background: 'var(--panel)',
+              background: 'var(--panel-hover)',
               color: 'var(--fg)',
               border: '1px solid var(--line)',
-              borderRadius: 8,
-              padding: '5px 10px',
+              borderRadius: 4,
+              padding: '4px 8px',
               fontSize: 11,
-              marginRight: 8,
+              marginRight: 6,
               cursor: 'pointer'
             }}
           >
@@ -477,25 +472,23 @@ function Main() {
           </select>
 
           {/* Source selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(0,0,0,0.25)', padding: '2px 4px', borderRadius: 8, border: '1px solid var(--line)' }}>
-            <span className="dim" style={{ fontSize: 10, textTransform: 'uppercase', padding: '0 4px', fontWeight: 600 }}>Source:</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'var(--panel-hover)', padding: '2px 4px', borderRadius: 4, border: '1px solid var(--line)' }}>
+            <span className="dim" style={{ fontSize: 10, padding: '0 4px', fontWeight: 500 }}>Source:</span>
             {['both', 'windows', 'linux'].map(s => (
               <button
                 key={s}
                 className={`btn btn-sm ${s === src ? 'on' : ''}`}
                 style={{
                   margin: 0,
-                  padding: '3px 8px',
+                  padding: '2px 6px',
                   fontSize: 11,
-                  textTransform: 'uppercase',
-                  fontWeight: s === src ? 700 : 500,
-                  background: s === src && s === 'both' ? 'linear-gradient(135deg, rgba(99,102,241,0.25) 0%, rgba(56,189,248,0.25) 100%)' : undefined,
-                  borderColor: s === src && s === 'both' ? 'var(--accent)' : undefined
+                  fontWeight: s === src ? 500 : 400,
+                  borderRadius: 3
                 }}
                 onClick={() => changeSrc(s)}
                 title={s === 'both' ? 'Unified Hybrid Defense (Monitors Windows and Linux simultaneously)' : `${s.toUpperCase()} single platform filter`}
               >
-                {s === 'both' ? 'Unified Both' : s}
+                {s === 'both' ? 'Unified' : s}
               </button>
             ))}
           </div>
@@ -503,11 +496,11 @@ function Main() {
           {/* Ctrl+K hint button */}
           <button
             className="btn btn-sm"
-            style={{ marginLeft: 6, padding: '4px 10px', fontSize: 11 }}
+            style={{ marginLeft: 6, padding: '3px 8px', fontSize: 11, borderRadius: 4 }}
             onClick={() => setPal(true)}
             title="Command palette (Ctrl+K)"
           >
-            <kbd style={{ fontSize: 10, background: 'rgba(255,255,255,0.08)', padding: '2px 4px', borderRadius: 3 }}>Ctrl+K</kbd>
+            <kbd style={{ fontSize: 10, color: 'var(--dim)' }}>Ctrl+K</kbd>
           </button>
         </header>
 

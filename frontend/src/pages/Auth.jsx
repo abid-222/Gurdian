@@ -45,26 +45,23 @@ export default function Auth({ src }) {
 
   return (
     <div>
-      {/* ── 3D Security Module Banner ── */}
-      <div className="status-banner-3d">
+      {/* ── Authentication Sentinel Header ── */}
+      <div className="card" style={{ padding: '16px 20px', marginBottom: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <ShieldAlert size={22} color="var(--c)" />
-              <h3 style={{ margin: 0, color: 'var(--fg)', fontSize: 16 }}>
-                Authentication & Privilege Escalation Sentinel
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <ShieldAlert size={18} color="var(--dim)" />
+              <h3 style={{ margin: 0, color: 'var(--fg)', fontSize: 16, fontWeight: 600 }}>
+                Authentication and access activity
               </h3>
-              <Badge v={failed.length > 0 ? `${failed.length} FAILED ATTEMPTS` : 'SECURE'} tone={failed.length > 0 ? 'a' : 'g'} />
+              <Badge v={failed.length > 0 ? `${failed.length} failed` : 'Normal'} tone={failed.length > 0 ? 'a' : 'g'} />
             </div>
-            <p className="dim" style={{ fontSize: 13, margin: '4px 0 0', maxWidth: 740, lineHeight: 1.5 }}>
-              Audits PAM authentication logs, SSH logins, and sudo execution records.
-              Employs behavioral sliding windows to detect brute-force password cracking attacks and rogue user sessions.
+            <p className="dim" style={{ fontSize: 12, margin: '4px 0 0', maxWidth: 740, lineHeight: 1.5 }}>
+              Audits PAM authentication records, SSH logins, and sudo execution. Detects brute-force attempts and anomalous logins.
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className="badge c" style={{ fontSize: 11, padding: '4px 10px' }}>
-              Active Sessions: {sessions.length}
-            </span>
+            <Badge v={`Active sessions: ${sessions.length}`} tone="c" />
           </div>
         </div>
       </div>

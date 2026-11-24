@@ -175,8 +175,8 @@ export default function Reports({ src = 'both' }) {
 
   return (
     <div>
-      {/* ── 3D Forensic Audit Command Banner ── */}
-      <div className="status-banner-3d">
+      {/* ── Security & Forensic Audit Center Header ── */}
+      <div className="card" style={{ padding: '16px 20px', marginBottom: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
@@ -254,7 +254,7 @@ export default function Reports({ src = 'both' }) {
       {/* ── 4 Holographic 3D Metric Overview Cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 16 }}>
         {/* Posture Score */}
-        <Card className="card-3d" style={{ padding: 14 }}>
+        <Card className="" style={{ padding: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <span className="dim" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>Security Posture</span>
             <span style={{ fontSize: 18, fontWeight: 800, color: auditGrade.color }}>{auditGrade.grade}</span>
@@ -269,7 +269,7 @@ export default function Reports({ src = 'both' }) {
         </Card>
 
         {/* Monitored Host */}
-        <Card className="card-3d" style={{ padding: 14 }}>
+        <Card className="" style={{ padding: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <span className="dim" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>Target System</span>
             <Server size={16} color="var(--c)" />
@@ -283,7 +283,7 @@ export default function Reports({ src = 'both' }) {
         </Card>
 
         {/* Recorded Anomalies */}
-        <Card className="card-3d" style={{ padding: 14 }}>
+        <Card className="" style={{ padding: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <span className="dim" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>Total Alerts Recorded</span>
             <ShieldAlert size={16} color="var(--r)" />
@@ -297,7 +297,7 @@ export default function Reports({ src = 'both' }) {
         </Card>
 
         {/* Verification Guarantee */}
-        <Card className="card-3d" style={{ padding: 14 }}>
+        <Card className="" style={{ padding: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <span className="dim" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase' }}>Compliance Scope</span>
             <FileCheck size={16} color="var(--g)" />
@@ -321,7 +321,7 @@ export default function Reports({ src = 'both' }) {
         {downloadFormats.map(f => {
           const Icon = f.icon
           return (
-            <Card key={f.fmt} className="card-3d" title={f.name}>
+            <Card key={f.fmt} className="" title={f.name}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, height: '100%' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--c)' }}>
@@ -369,7 +369,7 @@ export default function Reports({ src = 'both' }) {
 
       {/* ── Security Vector Compliance Matrix ── */}
       <Card
-        className="card-3d"
+        className=""
         style={{ marginBottom: 20 }}
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
@@ -433,7 +433,7 @@ export default function Reports({ src = 'both' }) {
 
       {/* ── Interactive In-Browser Live Report Preview ── */}
       <Card
-        className="card-3d"
+        className=""
         style={{ marginBottom: 20 }}
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: 10 }}>
@@ -651,7 +651,7 @@ export default function Reports({ src = 'both' }) {
 
       {/* ── Forensic Report Scope Info ── */}
       <Card
-        className="card-3d"
+        className=""
         title={
           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Layers size={16} color="var(--c)" />

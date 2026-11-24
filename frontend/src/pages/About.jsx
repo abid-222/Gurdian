@@ -73,26 +73,25 @@ const SPECS = [
 export default function About() {
   return (
     <div>
-      {/* ── Formal Academic Defense Header Banner ── */}
-      <div className="status-banner-3d" style={{ marginBottom: 16 }}>
+      {/* ── Academic Defense Header Banner ── */}
+      <div className="card" style={{ padding: '16px 20px', marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
               <div
                 style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 10,
-                  background: 'linear-gradient(135deg, rgba(99,102,241,0.25) 0%, rgba(56,189,248,0.25) 100%)',
+                  width: 36,
+                  height: 36,
+                  borderRadius: 6,
+                  background: 'var(--panel-hover)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: 'var(--c)',
-                  border: '1px solid rgba(99,102,241,0.4)',
-                  boxShadow: '0 0 16px rgba(99,102,241,0.2)'
+                  color: 'var(--fg)',
+                  border: '1px solid var(--line)'
                 }}
               >
-                <GraduationCap size={22} strokeWidth={2.2} />
+                <GraduationCap size={20} strokeWidth={1.8} />
               </div>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -143,7 +142,7 @@ export default function About() {
 
       {/* ── 4 Architectural Specification Cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 18 }}>
-        <Card className="card-3d" style={{ padding: 14 }}>
+        <Card className="" style={{ padding: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, color: 'var(--c)' }}>
             <Cpu size={18} />
             <span style={{ fontSize: 13, fontWeight: 700 }}>Telemetry Engine</span>
@@ -153,7 +152,7 @@ export default function About() {
           </div>
         </Card>
 
-        <Card className="card-3d" style={{ padding: 14 }}>
+        <Card className="" style={{ padding: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, color: 'var(--g)' }}>
             <ShieldCheck size={18} />
             <span style={{ fontSize: 13, fontWeight: 700 }}>Risk Scoring</span>
@@ -163,7 +162,7 @@ export default function About() {
           </div>
         </Card>
 
-        <Card className="card-3d" style={{ padding: 14 }}>
+        <Card className="" style={{ padding: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, color: 'var(--p)' }}>
             <Layers size={18} />
             <span style={{ fontSize: 13, fontWeight: 700 }}>Dual Platform</span>
@@ -173,7 +172,7 @@ export default function About() {
           </div>
         </Card>
 
-        <Card className="card-3d" style={{ padding: 14 }}>
+        <Card className="" style={{ padding: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, color: 'var(--r)' }}>
             <Terminal size={18} />
             <span style={{ fontSize: 13, fontWeight: 700 }}>Air-Gapped Ready</span>
@@ -197,7 +196,7 @@ export default function About() {
 
       <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', marginBottom: 20 }}>
         {TEAM.map((m) => (
-          <Card key={m.id} className="card-3d" style={{ padding: 16 }}>
+          <Card key={m.id} className="" style={{ padding: 16 }}>
             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
               {/* Member Avatar with Initials */}
               <div
@@ -256,7 +255,7 @@ export default function About() {
 
       {/* ── Key Viva / Examiner Defense Highlights ── */}
       <Card
-        className="card-3d"
+        className=""
         style={{ marginBottom: 20 }}
         title={
           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -330,7 +329,7 @@ export default function About() {
 
       {/* ── System Attestation & Specifications Table ── */}
       <Card
-        className="card-3d"
+        className=""
         title={
           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <BookOpen size={16} color="var(--c)" />

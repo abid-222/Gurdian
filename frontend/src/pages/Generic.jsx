@@ -21,7 +21,6 @@ export default function Generic({ mod = 'system', src = 'both' }) {
   const [err, setErr] = useState('')
   const [liveAuto, setLiveAuto] = useState(false)
 
-  // Auto-refresh when liveAuto is enabled
   useEffect(() => {
     if (!liveAuto) return
     const timer = setInterval(() => {
@@ -40,7 +39,6 @@ export default function Generic({ mod = 'system', src = 'both' }) {
     }
   }
 
-  // Get first valid telemetry row
   const rows = data?.rows || []
   const sys = currentMod === 'system' && rows.length > 0 ? rows[0] : null
   const cpuVal = parseFloat(sys?.cpu_pct || 0)
@@ -50,91 +48,79 @@ export default function Generic({ mod = 'system', src = 'both' }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {/* ── User-Friendly System Health Banner ── */}
+      {/* ── System Health Header ── */}
       {currentMod === 'system' && (
-        <div className="status-banner-3d">
+        <div className="card" style={{ padding: '16px 20px', marginBottom: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div
                 style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 10,
-                  background: isHighLoad
-                    ? 'linear-gradient(135deg, rgba(239,68,68,0.2) 0%, rgba(249,115,22,0.2) 100%)'
-                    : 'linear-gradient(135deg, rgba(16,185,129,0.2) 0%, rgba(56,189,248,0.2) 100%)',
-                  border: `1.5px solid ${isHighLoad ? 'rgba(239,68,68,0.4)' : 'rgba(16,185,129,0.4)'}`,
+                  width: 40,
+                  height: 40,
+                  borderRadius: 8,
+                  background: 'var(--panel-hover)',
+                  border: '1px solid var(--line)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: isHighLoad ? 'var(--r)' : 'var(--g)',
-                  boxShadow: `0 0 16px ${isHighLoad ? 'rgba(239,68,68,0.25)' : 'rgba(16,185,129,0.25)'}`
+                  color: isHighLoad ? 'var(--r)' : 'var(--g)'
                 }}
               >
-                <Server size={24} strokeWidth={2.2} />
+                <Server size={20} strokeWidth={2} />
               </div>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <h3 style={{ margin: 0, color: 'var(--fg)', fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em' }}>
-                    System Health & Performance
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <h3 style={{ margin: 0, color: 'var(--fg)', fontSize: 16, fontWeight: 600 }}>
+                    System health and performance
                   </h3>
                   <Badge
-                    v={isHighLoad ? 'HIGH WORKLOAD' : 'ALL SYSTEMS HEALTHY'}
+                    v={isHighLoad ? 'High workload' : 'Healthy'}
                     tone={isHighLoad ? 'r' : 'g'}
                   />
                 </div>
-                <p className="dim" style={{ margin: '4px 0 0', fontSize: 12.5 }}>
-                  Real-time overview of your computer's processor, memory, storage, and network activity.
+                <p className="dim" style={{ margin: '4px 0 0', fontSize: 12 }}>
+                  Real-time telemetry of host processor, memory, storage, and network activity.
                 </p>
               </div>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              {/* Live Polling Switch */}
               <button
                 className={`btn btn-sm ${liveAuto ? 'on' : ''}`}
                 onClick={() => setLiveAuto(!liveAuto)}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 6,
-                  background: liveAuto ? 'rgba(16,185,129,0.18)' : 'rgba(255,255,255,0.05)',
-                  borderColor: liveAuto ? 'var(--g)' : 'var(--line)',
-                  color: liveAuto ? 'var(--g)' : 'var(--fg)',
-                  fontWeight: 600,
-                  padding: '6px 12px',
-                  borderRadius: 8
+                  gap: 6
                 }}
                 title="Automatically refresh performance metrics every 4 seconds"
               >
                 <Radio size={13} className={liveAuto ? 'spin' : ''} />
-                <span>{liveAuto ? 'Auto Refresh: ON' : 'Auto Refresh: OFF'}</span>
+                <span>{liveAuto ? 'Auto refresh: on' : 'Auto refresh: off'}</span>
               </button>
 
-              <span className="badge p" style={{ fontSize: 11, padding: '4px 10px', borderRadius: 8 }}>
-                Platform: {src.toUpperCase()}
-              </span>
+              <Badge v={`Platform: ${src.toUpperCase()}`} tone="c" />
             </div>
           </div>
         </div>
       )}
 
-      {/* ── 4 Clean User-Friendly Resource Cards ── */}
+      {/* ── Resource Overview Cards ── */}
       {currentMod === 'system' && sys && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
           {/* CPU Card */}
-          <Card className="card-3d" style={{ padding: 14 }}>
+          <Card style={{ padding: 14, marginBottom: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <span className="dim" style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase' }}>Processor (CPU)</span>
-              <Cpu size={17} color="#38bdf8" />
+              <span className="dim" style={{ fontSize: 11 }}>Processor (CPU)</span>
+              <Cpu size={14} color="var(--dim)" />
             </div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: cpuVal > 80 ? 'var(--r)' : cpuVal > 50 ? 'var(--a)' : 'var(--g)' }}>
+            <div className="stat" style={{ color: cpuVal > 80 ? 'var(--r)' : cpuVal > 50 ? 'var(--a)' : 'var(--fg)' }}>
               {cpuVal}%
             </div>
-            <div className="dim" style={{ fontSize: 11.5, marginTop: 2 }}>
-              {cpuVal > 80 ? 'Heavy Load Active' : cpuVal > 40 ? 'Moderate Activity' : 'Normal & Smooth'}
+            <div className="dim" style={{ fontSize: 11, marginTop: 2 }}>
+              {cpuVal > 80 ? 'Heavy load' : cpuVal > 40 ? 'Moderate activity' : 'Normal'}
             </div>
-            <div style={{ marginTop: 8, height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+            <div style={{ marginTop: 8, height: 4, borderRadius: 2, background: 'var(--line)', overflow: 'hidden' }}>
               <div
                 style={{
                   width: `${Math.min(100, cpuVal)}%`,
@@ -146,41 +132,41 @@ export default function Generic({ mod = 'system', src = 'both' }) {
           </Card>
 
           {/* RAM Card */}
-          <Card className="card-3d" style={{ padding: 14 }}>
+          <Card style={{ padding: 14, marginBottom: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <span className="dim" style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase' }}>Memory (RAM)</span>
-              <Activity size={17} color="#818cf8" />
+              <span className="dim" style={{ fontSize: 11 }}>Memory (RAM)</span>
+              <Activity size={14} color="var(--dim)" />
             </div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: ramVal > 85 ? 'var(--r)' : 'var(--c)' }}>
+            <div className="stat" style={{ color: ramVal > 85 ? 'var(--r)' : 'var(--fg)' }}>
               {ramVal}%
             </div>
-            <div className="dim" style={{ fontSize: 11.5, marginTop: 2 }}>
-              {ramVal > 85 ? 'High Memory Usage' : 'Healthy Allocation'}
+            <div className="dim" style={{ fontSize: 11, marginTop: 2 }}>
+              {ramVal > 85 ? 'High allocation' : 'Normal allocation'}
             </div>
-            <div style={{ marginTop: 8, height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+            <div style={{ marginTop: 8, height: 4, borderRadius: 2, background: 'var(--line)', overflow: 'hidden' }}>
               <div
                 style={{
                   width: `${Math.min(100, ramVal)}%`,
                   height: '100%',
-                  background: ramVal > 85 ? 'var(--r)' : 'var(--c)'
+                  background: ramVal > 85 ? 'var(--r)' : 'var(--g)'
                 }}
               />
             </div>
           </Card>
 
           {/* Storage Card */}
-          <Card className="card-3d" style={{ padding: 14 }}>
+          <Card style={{ padding: 14, marginBottom: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <span className="dim" style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase' }}>Disk Storage</span>
-              <HardDrive size={17} color="#34d399" />
+              <span className="dim" style={{ fontSize: 11 }}>Disk storage</span>
+              <HardDrive size={14} color="var(--dim)" />
             </div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: diskVal > 90 ? 'var(--r)' : 'var(--fg)' }}>
+            <div className="stat" style={{ color: diskVal > 90 ? 'var(--r)' : 'var(--fg)' }}>
               {diskVal}%
             </div>
-            <div className="dim" style={{ fontSize: 11.5, marginTop: 2 }}>
-              Main Drive Space Used
+            <div className="dim" style={{ fontSize: 11, marginTop: 2 }}>
+              Main partition used
             </div>
-            <div style={{ marginTop: 8, height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+            <div style={{ marginTop: 8, height: 4, borderRadius: 2, background: 'var(--line)', overflow: 'hidden' }}>
               <div
                 style={{
                   width: `${Math.min(100, diskVal)}%`,
@@ -192,15 +178,15 @@ export default function Generic({ mod = 'system', src = 'both' }) {
           </Card>
 
           {/* Status & Uptime Card */}
-          <Card className="card-3d" style={{ padding: 14 }}>
+          <Card style={{ padding: 14, marginBottom: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <span className="dim" style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase' }}>System Status</span>
-              <CheckCircle2 size={17} color="#34d399" />
+              <span className="dim" style={{ fontSize: 11 }}>System status</span>
+              <CheckCircle2 size={14} color="var(--g)" />
             </div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--g)', marginTop: 4 }}>
-              Active & Protected
+            <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--g)', marginTop: 4 }}>
+              Protected
             </div>
-            <div className="dim" style={{ fontSize: 11.5, marginTop: 4 }}>
+            <div className="dim" style={{ fontSize: 11, marginTop: 4 }}>
               Uptime: {sys.uptime_s ? `${Math.floor(sys.uptime_s / 3600)}h ${Math.floor((sys.uptime_s % 3600) / 60)}m` : 'Running'}
             </div>
           </Card>
@@ -209,12 +195,12 @@ export default function Generic({ mod = 'system', src = 'both' }) {
 
       {/* ── Toolbar ── */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <Btn onClick={run} loading={loading} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
-          <RefreshCw size={14} className={loading ? 'spin' : ''} /> Refresh System Status
+        <Btn onClick={run} loading={loading} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <RefreshCw size={13} className={loading ? 'spin' : ''} /> Refresh status
         </Btn>
         {currentMod === 'system' && (
           <Btn onClick={history} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <Camera size={14} /> View History Snapshots
+            <Camera size={13} /> View history snapshots
           </Btn>
         )}
         <span className="dim" style={{ marginLeft: 'auto', fontSize: 12 }}>
@@ -233,8 +219,8 @@ export default function Generic({ mod = 'system', src = 'both' }) {
       {/* ── Resource Utilization Meters (Strictly retains cpu_pct for Vitest) ── */}
       {sys && (
         <div className="grid" style={{ marginBottom: 4 }}>
-          <Card className="card-3d" title="Hardware Resource Meters">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '6px 0' }}>
+          <Card title="Hardware resource meters">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 0' }}>
               <Bar label="cpu_pct" v={cpuVal} />
               <Bar label="ram_pct" v={ramVal} />
               <Bar label="disk_pct" v={diskVal} />
@@ -250,7 +236,7 @@ export default function Generic({ mod = 'system', src = 'both' }) {
           <Stat
             label="Uptime"
             value={sys.uptime_s ? `${Math.floor(sys.uptime_s / 3600)}h ${Math.floor((sys.uptime_s % 3600) / 60)}m` : '-'}
-            sub="Total active host runtime"
+            sub="Active host runtime"
           />
 
           <Stat
@@ -263,11 +249,10 @@ export default function Generic({ mod = 'system', src = 'both' }) {
 
       {/* ── Structured Data Table ── */}
       <Card
-        className="card-3d"
         title={
-          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Layers size={16} color="var(--c)" />
-            <span>Detailed Hardware Metrics & System Logs</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Layers size={15} color="var(--dim)" />
+            <span>Telemetry data</span>
           </span>
         }
       >
@@ -277,7 +262,7 @@ export default function Generic({ mod = 'system', src = 'both' }) {
       {/* ── Saved Snapshots Drawer ── */}
       {snaps && (
         <div style={{ marginTop: 14 }}>
-          <Card className="card-3d" title="Saved History Snapshots">
+          <Card title="Saved snapshots">
             <Table rows={snaps} />
           </Card>
         </div>

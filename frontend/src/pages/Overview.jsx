@@ -37,21 +37,21 @@ import { Badge, Btn, Card } from '../components/ui'
 
 // ── Unified risk scale ───────────────────────────────────────────────────────
 function riskLevel(score) {
-  if (score < 30) return { label: 'DEFCON 5 · SECURE', color: 'var(--g, #10b981)', tone: 'g', defcon: 5 }
-  if (score < 50) return { label: 'DEFCON 4 · LOW THREAT', color: '#a3e635', tone: 'y', defcon: 4 }
-  if (score < 70) return { label: 'DEFCON 3 · ELEVATED RISK', color: 'var(--a, #f59e0b)', tone: 'a', defcon: 3 }
-  if (score < 90) return { label: 'DEFCON 2 · HIGH ALERT', color: '#f97316', tone: 'r', defcon: 2 }
-  return { label: 'DEFCON 1 · CRITICAL BREACH', color: 'var(--r, #ef4444)', tone: 'r', defcon: 1 }
+  if (score < 30) return { label: 'Low threat', color: 'var(--risk-safe)', tone: 'g', level: 'Secure' }
+  if (score < 50) return { label: 'Guarded', color: 'var(--risk-low)', tone: 'y', level: 'Guarded' }
+  if (score < 70) return { label: 'Elevated risk', color: 'var(--risk-medium)', tone: 'a', level: 'Elevated' }
+  if (score < 90) return { label: 'High alert', color: 'var(--risk-high)', tone: 'r', level: 'High' }
+  return { label: 'Critical risk', color: 'var(--risk-critical)', tone: 'r', level: 'Critical' }
 }
 
 // ── Scan modules with MITRE ATT&CK technique classifications ─────────────────
 const MODULES_CONFIG = [
-  { key: 'process',     label: 'Process Forensics',   mitre: 'T1059.004', icon: Cpu,        target: 'In-Memory & Deleted Executables' },
-  { key: 'network',     label: 'Network Perimeter',   mitre: 'T1049',     icon: Network,    target: 'Backdoor Ports & Reverse Shells' },
-  { key: 'integrity',   label: 'Cryptographic Vault', mitre: 'T1565.001', icon: FolderLock, target: 'SHA-256 System Config Hashes'    },
-  { key: 'auth',        label: 'Identity & Access',   mitre: 'T1110',     icon: KeyRound,   target: 'Brute-Force & Privilege Escalation' },
-  { key: 'persistence', label: 'Persistence Watch',   mitre: 'T1053.003', icon: Database,   target: 'Cron, Systemd & SUID Rootkits'  },
-  { key: 'usb',         label: 'Hardware Sentinel',   mitre: 'T1200',     icon: Usb,        target: 'Rogue USB & Hardware Bus Devices' },
+  { key: 'process',     label: 'Process forensics',   mitre: 'T1059.004', icon: Cpu,        target: 'In-memory and deleted binaries' },
+  { key: 'network',     label: 'Network perimeter',   mitre: 'T1049',     icon: Network,    target: 'Listening ports and active sockets' },
+  { key: 'integrity',   label: 'File vault',          mitre: 'T1565.001', icon: FolderLock, target: 'SHA-256 system baseline hashes' },
+  { key: 'auth',        label: 'Login activity',      mitre: 'T1110',     icon: KeyRound,   target: 'Authentication attempts and sudo' },
+  { key: 'persistence', label: 'Persistence watch',   mitre: 'T1053.003', icon: Database,   target: 'Cron, systemd, and startup entries' },
+  { key: 'usb',         label: 'Hardware sentinel',   mitre: 'T1200',     icon: Usb,        target: 'Connected peripherals and bus devices' },
 ]
 
 export default function Overview({ src = 'both', bump }) {
@@ -59,7 +59,7 @@ export default function Overview({ src = 'both', bump }) {
   const [al,      setAl]      = useState([])
   const [info,    setInfo]    = useState(null)
   const [hist,    setHist]    = useState([])
-  const [prog,    setProg]    = useState(null)   // null | index 0-5
+  const [prog,    setProg]    = useState(null)
   const [err,     setErr]     = useState('')
   const [loading, setLoading] = useState(false)
   const [at,      setAt]      = useState('-')
@@ -68,7 +68,6 @@ export default function Overview({ src = 'both', bump }) {
 
   const { last, status } = useLive(src)
 
-  // ── Health check ────────────────────────────────────────────────────────
   const checkHealth = useCallback(async () => {
     const t0 = performance.now()
     try {
@@ -79,7 +78,6 @@ export default function Overview({ src = 'both', bump }) {
     }
   }, [])
 
-  // ── Data fetch ──────────────────────────────────────────────────────────
   const fetchAll = useCallback(() => Promise.all([
     api('/api/score'),
     api('/api/alerts'),
@@ -122,7 +120,6 @@ export default function Overview({ src = 'both', bump }) {
     return () => { on = false }
   }, [fetchAll, apply])
 
-  // ── 1-Click Acknowledge Alert ───────────────────────────────────────────
   const ackAlert = async (id) => {
     setAcking(id)
     try {
@@ -138,7 +135,6 @@ export default function Overview({ src = 'both', bump }) {
     setAcking(null)
   }
 
-  // ── Full scan across all modules ────────────────────────────────────────
   const full = async () => {
     const sources = src === 'both' ? ['windows', 'linux'] : [src]
     const modules = MODULES_CONFIG.map(m => m.key)
@@ -161,117 +157,100 @@ export default function Overview({ src = 'both', bump }) {
       {err && (
         <div
           style={{
-            background: 'rgba(239, 68, 68, 0.12)',
-            border: '1px solid rgba(239, 68, 68, 0.35)',
-            color: '#f87171',
+            background: 'rgba(229, 72, 77, 0.1)',
+            border: '1px solid rgba(229, 72, 77, 0.25)',
+            color: 'var(--r)',
             padding: '10px 14px',
-            borderRadius: 8,
+            borderRadius: 6,
             display: 'flex',
             alignItems: 'center',
             gap: 10,
-            fontSize: 13,
-            fontWeight: 600
+            fontSize: 12
           }}
         >
-          <AlertTriangle size={18} />
-          <span>Kernel Communication Warning: {err}</span>
+          <AlertTriangle size={16} />
+          <span>Kernel communication notice: {err}</span>
         </div>
       )}
 
-      {/* ── 1. 3D Cyber Command Center Hero HUD ── */}
+      {/* ── 1. SOC Overview Header ── */}
       <div
-        className="card-3d status-banner-3d"
+        className="card"
         style={{
           padding: '16px 20px',
-          background: 'linear-gradient(135deg, rgba(15,23,42,0.95) 0%, rgba(30,41,59,0.92) 100%)',
-          border: '1.5px solid rgba(99,102,241,0.3)',
-          borderRadius: 14,
-          boxShadow: '0 12px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)'
+          marginBottom: 0
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-          {/* Left Title & Status */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div
               style={{
-                width: 48,
-                height: 48,
-                borderRadius: 12,
-                background: score < 50
-                  ? 'linear-gradient(135deg, rgba(16,185,129,0.3) 0%, rgba(56,189,248,0.2) 100%)'
-                  : 'linear-gradient(135deg, rgba(239,68,68,0.3) 0%, rgba(249,115,22,0.2) 100%)',
-                border: `1.5px solid ${score < 50 ? 'rgba(16,185,129,0.5)' : 'rgba(239,68,68,0.5)'}`,
+                width: 40,
+                height: 40,
+                borderRadius: 8,
+                background: 'var(--panel-hover)',
+                border: '1px solid var(--line)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: score < 50 ? 'var(--g, #34d399)' : 'var(--r, #f87171)',
-                boxShadow: score < 50 ? '0 0 20px rgba(16,185,129,0.35)' : '0 0 20px rgba(239,68,68,0.35)'
+                color: score < 50 ? 'var(--g)' : 'var(--r)'
               }}
             >
-              {score < 50 ? <ShieldCheck size={28} strokeWidth={2.4} /> : <ShieldAlert size={28} strokeWidth={2.4} />}
+              {score < 50 ? <ShieldCheck size={22} strokeWidth={1.8} /> : <ShieldAlert size={22} strokeWidth={1.8} />}
             </div>
 
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>
-                  Smart OS Guardian — 3D Cyber Command Center
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--fg)', letterSpacing: '-0.01em' }}>
+                  System security posture
                 </h2>
                 <span
+                  className="badge"
                   style={{
-                    background: risk.color + '22',
-                    border: `1px solid ${risk.color}66`,
+                    background: risk.color + '18',
                     color: risk.color,
-                    padding: '3px 10px',
-                    borderRadius: 20,
+                    borderColor: risk.color,
+                    padding: '2px 8px',
                     fontSize: 11,
-                    fontWeight: 800,
-                    letterSpacing: '0.04em',
-                    boxShadow: `0 0 10px ${risk.color}33`
+                    fontWeight: 500,
+                    borderRadius: 4
                   }}
                 >
                   {risk.label}
                 </span>
-                <Badge v={`SOURCE: ${src.toUpperCase()}`} tone="p" />
+                <Badge v={`Source: ${src.toUpperCase()}`} tone="c" />
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 5, fontSize: 12, color: 'var(--dim, #94a3b8)', flexWrap: 'wrap' }}>
-                <span>Host: <b style={{ color: 'var(--fg, #f1f5f9)' }}>{info?.host || 'DESKTOP-LOCAL'}</b></span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, fontSize: 12, color: 'var(--dim)', flexWrap: 'wrap' }}>
+                <span>Host: <span style={{ color: 'var(--fg)' }}>{info?.host || 'localhost'}</span></span>
                 <span>•</span>
-                <span>OS: <b style={{ color: 'var(--fg, #f1f5f9)' }}>{info?.os || 'Hybrid Kernel'}</b></span>
+                <span>OS: <span style={{ color: 'var(--fg)' }}>{info?.os || 'System kernel'}</span></span>
                 <span>•</span>
-                <span>Daemon: <b style={{ color: health.ok ? '#34d399' : '#f87171' }}>{health.ok ? 'ONLINE' : 'CONNECTING'}</b> {health.latency > 0 && `(${health.latency}ms ping)`}</span>
+                <span>Collector: <span style={{ color: health.ok ? 'var(--g)' : 'var(--r)' }}>{health.ok ? 'Online' : 'Checking'}</span> {health.latency > 0 && `(${health.latency}ms)`}</span>
                 <span>•</span>
-                <span>WebSocket: <b style={{ color: status === 'connected' ? '#34d399' : '#f59e0b' }}>{status.toUpperCase()}</b></span>
+                <span>Socket: <span style={{ color: status === 'connected' ? 'var(--g)' : 'var(--a)' }}>{status}</span></span>
               </div>
             </div>
           </div>
 
-          {/* Action Hub Buttons (Strictly preserves Vitest 'Run Full Scan' and 'Export Report') */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          {/* Action Hub Buttons (Preserves Vitest 'Run Full Scan' and 'Export Report') */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <Btn
               onClick={full}
               loading={prog !== null}
               className="btn-primary"
-              style={{
-                padding: '9px 18px',
-                fontWeight: 700,
-                fontSize: 13,
-                boxShadow: '0 0 18px rgba(99,102,241,0.4)',
-                background: 'linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%)',
-                border: 'none',
-                color: '#fff'
-              }}
+              style={{ padding: '7px 16px', fontSize: 12 }}
             >
-              <Search size={15} /> {prog === null ? 'Run Full Scan' : `Scanning ${MODULES_CONFIG[prog]?.label || ''} (${prog + 1}/${MODULES_CONFIG.length})…`}
+              <Search size={14} /> {prog === null ? 'Run Full Scan' : `Scanning ${MODULES_CONFIG[prog]?.label || ''} (${prog + 1}/${MODULES_CONFIG.length})…`}
             </Btn>
 
-            <Btn onClick={load} loading={loading} style={{ padding: '8px 14px', fontSize: 12, fontWeight: 600 }}>
-              <RefreshCw size={14} className={loading ? 'spin' : ''} /> Refresh
+            <Btn onClick={load} loading={loading} style={{ padding: '7px 12px', fontSize: 12 }}>
+              <RefreshCw size={13} className={loading ? 'spin' : ''} /> Refresh
             </Btn>
 
             <a href="/api/report?fmt=html" download style={{ textDecoration: 'none' }}>
-              <Btn style={{ padding: '8px 14px', fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <FileText size={14} /> Export Report
+              <Btn style={{ padding: '7px 12px', fontSize: 12 }}>
+                <FileText size={13} /> Export Report
               </Btn>
             </a>
 
@@ -283,20 +262,20 @@ export default function Overview({ src = 'both', bump }) {
           </div>
         </div>
 
-        {/* Live scanning progress bar if active */}
+        {/* Live scanning progress bar */}
         {prog !== null && (
           <div style={{ marginTop: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4, color: 'var(--accent, #818cf8)', fontWeight: 600 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4, color: 'var(--dim)' }}>
               <span>Inspecting: {MODULES_CONFIG[prog]?.label} ({MODULES_CONFIG[prog]?.mitre})</span>
-              <span>{Math.round(((prog + 1) / MODULES_CONFIG.length) * 100)}%</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{Math.round(((prog + 1) / MODULES_CONFIG.length) * 100)}%</span>
             </div>
-            <div style={{ height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{ height: 4, background: 'var(--line)', borderRadius: 2, overflow: 'hidden' }}>
               <div
                 style={{
                   width: `${((prog + 1) / MODULES_CONFIG.length) * 100}%`,
                   height: '100%',
-                  background: 'linear-gradient(90deg, #4f46e5, #06b6d4)',
-                  transition: 'width 0.3s ease'
+                  background: 'var(--accent)',
+                  transition: 'width 0.2s ease'
                 }}
               />
             </div>
@@ -304,60 +283,55 @@ export default function Overview({ src = 'both', bump }) {
         )}
       </div>
 
-      {/* ── 2. Hero Row: Holographic Risk Reactor + Live Vitality Matrix ── */}
+      {/* ── 2. Risk Gauge & Host Metrics ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
-        {/* Holographic Risk Reactor Card */}
+        {/* Threat Diagnostic Card */}
         <Card
-          className="card-3d"
           title={
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Zap size={16} color={risk.color} />
-                <span>Threat Diagnostic Reactor</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Zap size={15} color={risk.color} />
+                <span>Threat index</span>
               </span>
-              <span style={{ fontSize: 11, color: risk.color, fontWeight: 700 }}>
-                SCORE: {score}/100
+              <span style={{ fontSize: 11, color: 'var(--dim)', fontVariantNumeric: 'tabular-nums' }}>
+                Score: {score} / 100
               </span>
             </div>
           }
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', padding: '10px 0', flexWrap: 'wrap', gap: 16 }}>
-            {/* Custom High-Tech SVG Circular Gauge */}
-            <div style={{ position: 'relative', width: 140, height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width={140} height={140} style={{ transform: 'rotate(-90deg)' }}>
-                {/* Background Ring */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', padding: '8px 0', flexWrap: 'wrap', gap: 16 }}>
+            {/* SVG Circular Gauge */}
+            <div style={{ position: 'relative', width: 120, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width={120} height={120} style={{ transform: 'rotate(-90deg)' }}>
                 <circle
-                  cx={70}
-                  cy={70}
-                  r={54}
-                  stroke="rgba(255, 255, 255, 0.08)"
-                  strokeWidth={10}
+                  cx={60}
+                  cy={60}
+                  r={46}
+                  stroke="var(--line)"
+                  strokeWidth={8}
                   fill="none"
                 />
-                {/* Active Score Ring */}
                 <circle
-                  cx={70}
-                  cy={70}
-                  r={54}
+                  cx={60}
+                  cy={60}
+                  r={46}
                   stroke={risk.color}
-                  strokeWidth={10}
-                  strokeDasharray={339.29}
-                  strokeDashoffset={339.29 - (339.29 * Math.min(100, score)) / 100}
+                  strokeWidth={8}
+                  strokeDasharray={289.02}
+                  strokeDashoffset={289.02 - (289.02 * Math.min(100, score)) / 100}
                   strokeLinecap="round"
                   fill="none"
                   style={{
-                    transition: 'stroke-dashoffset 0.8s ease, stroke 0.4s ease',
-                    filter: `drop-shadow(0 0 6px ${risk.color})`
+                    transition: 'stroke-dashoffset 0.4s ease',
                   }}
                 />
               </svg>
-              {/* Inner Center Metrics */}
               <div style={{ position: 'absolute', textAlign: 'center' }}>
-                <div style={{ fontSize: 32, fontWeight: 900, color: 'var(--fg, #fff)', lineHeight: 1 }}>
+                <div style={{ fontSize: 28, fontWeight: 600, color: 'var(--fg)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
                   {score}
                 </div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--dim, #94a3b8)', letterSpacing: '0.08em', marginTop: 3 }}>
-                  RISK INDEX
+                <div style={{ fontSize: 10, color: 'var(--dim)', marginTop: 4 }}>
+                  Risk level
                 </div>
               </div>
             </div>
@@ -365,114 +339,114 @@ export default function Overview({ src = 'both', bump }) {
             {/* Sub-Vector Threat Breakdown */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 160 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                <span className="dim">System Stability</span>
-                <b style={{ color: score < 50 ? '#34d399' : '#f87171' }}>{score < 50 ? 'Optimal' : 'Compromised'}</b>
+                <span className="dim">System state</span>
+                <span style={{ color: score < 50 ? 'var(--g)' : 'var(--r)', fontWeight: 500 }}>{score < 50 ? 'Normal' : 'Elevated'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                <span className="dim">Critical Anomalies</span>
-                <b style={{ color: criticalCount > 0 ? '#f87171' : '#34d399' }}>{criticalCount} Detected</b>
+                <span className="dim">Critical alerts</span>
+                <span style={{ color: criticalCount > 0 ? 'var(--r)' : 'var(--fg)', fontWeight: 500 }}>{criticalCount} detected</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
                 <span className="dim">Unacknowledged</span>
-                <b style={{ color: unackAlerts.length > 0 ? 'var(--a, #f59e0b)' : '#34d399' }}>{unackAlerts.length} Events</b>
+                <span style={{ color: unackAlerts.length > 0 ? 'var(--a)' : 'var(--fg)', fontWeight: 500 }}>{unackAlerts.length} events</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                <span className="dim">Threat Level</span>
-                <span style={{ color: risk.color, fontWeight: 800 }}>DEFCON {risk.defcon}</span>
+                <span className="dim">Posture</span>
+                <span style={{ color: risk.color, fontWeight: 500 }}>{risk.level}</span>
               </div>
             </div>
           </div>
         </Card>
 
-        {/* Live Host Vitality Matrix (CPU, RAM, Alerts, Storage) */}
+        {/* Live Host Metrics Matrix (CPU, RAM, Alerts, Storage) */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
           {/* Active Alerts Card */}
-          <Card className="card-3d" style={{ padding: '14px 16px' }}>
+          <Card style={{ padding: '14px 16px', marginBottom: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span className="dim" style={{ fontSize: 12, fontWeight: 600 }}>ACTIVE ALERTS</span>
-              <AlertTriangle size={15} color={unackAlerts.length > 0 ? '#f87171' : '#34d399'} />
+              <span className="dim" style={{ fontSize: 11 }}>Active alerts</span>
+              <AlertTriangle size={14} color={unackAlerts.length > 0 ? 'var(--r)' : 'var(--g)'} />
             </div>
-            <div style={{ fontSize: 26, fontWeight: 800, margin: '6px 0', color: unackAlerts.length > 0 ? '#f87171' : '#34d399' }}>
+            <div className="stat" style={{ margin: '4px 0', color: unackAlerts.length > 0 ? 'var(--r)' : 'var(--fg)' }}>
               {unackAlerts.length}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--dim, #94a3b8)' }}>
-              {criticalCount > 0 ? `${criticalCount} high priority` : '0 high priority threats'}
+            <div style={{ fontSize: 11, color: 'var(--dim)' }}>
+              {criticalCount > 0 ? `${criticalCount} high priority` : '0 high priority'}
             </div>
-            <div style={{ marginTop: 8, height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+            <div style={{ marginTop: 8, height: 4, borderRadius: 2, background: 'var(--line)', overflow: 'hidden' }}>
               <div
                 style={{
                   width: `${Math.min(100, unackAlerts.length * 20)}%`,
                   height: '100%',
-                  background: unackAlerts.length > 0 ? '#ef4444' : '#10b981'
+                  background: unackAlerts.length > 0 ? 'var(--r)' : 'var(--g)'
                 }}
               />
             </div>
           </Card>
 
           {/* Processor Workload Card */}
-          <Card className="card-3d" style={{ padding: '14px 16px' }}>
+          <Card style={{ padding: '14px 16px', marginBottom: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span className="dim" style={{ fontSize: 12, fontWeight: 600 }}>CPU LOAD</span>
-              <Cpu size={15} color="#38bdf8" />
+              <span className="dim" style={{ fontSize: 11 }}>CPU load</span>
+              <Cpu size={14} color="var(--dim)" />
             </div>
-            <div style={{ fontSize: 26, fontWeight: 800, margin: '6px 0', color: (last?.cpu ?? 0) > 80 ? '#f87171' : (last?.cpu ?? 0) > 50 ? '#f59e0b' : '#38bdf8' }}>
+            <div className="stat" style={{ margin: '4px 0' }}>
               {last?.cpu != null ? `${last.cpu}%` : '—'}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--dim, #94a3b8)' }}>
-              {info?.cpus ? `${info.cpus} Logical Cores Active` : 'Delta Kernel Sampling'}
+            <div style={{ fontSize: 11, color: 'var(--dim)' }}>
+              {info?.cpus ? `${info.cpus} cores active` : 'Active workload'}
             </div>
-            <div style={{ marginTop: 8, height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+            <div style={{ marginTop: 8, height: 4, borderRadius: 2, background: 'var(--line)', overflow: 'hidden' }}>
               <div
                 style={{
                   width: `${Math.min(100, last?.cpu || 0)}%`,
                   height: '100%',
-                  background: (last?.cpu ?? 0) > 80 ? '#ef4444' : (last?.cpu ?? 0) > 50 ? '#f59e0b' : '#38bdf8'
+                  background: (last?.cpu ?? 0) > 80 ? 'var(--r)' : (last?.cpu ?? 0) > 50 ? 'var(--a)' : 'var(--g)'
                 }}
               />
             </div>
           </Card>
 
           {/* Memory Utilization Card */}
-          <Card className="card-3d" style={{ padding: '14px 16px' }}>
+          <Card style={{ padding: '14px 16px', marginBottom: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span className="dim" style={{ fontSize: 12, fontWeight: 600 }}>RAM ALLOCATION</span>
-              <Activity size={15} color="#818cf8" />
+              <span className="dim" style={{ fontSize: 11 }}>RAM allocation</span>
+              <Activity size={14} color="var(--dim)" />
             </div>
-            <div style={{ fontSize: 26, fontWeight: 800, margin: '6px 0', color: (last?.ram ?? 0) > 80 ? '#f87171' : '#818cf8' }}>
+            <div className="stat" style={{ margin: '4px 0' }}>
               {last?.ram != null ? `${last.ram}%` : '—'}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--dim, #94a3b8)' }}>
-              {info?.mem_mb ? `${info.mem_mb} MB Capacity` : 'Real Physical Memory'}
+            <div style={{ fontSize: 11, color: 'var(--dim)' }}>
+              {info?.mem_mb ? `${info.mem_mb} MB total` : 'Physical memory'}
             </div>
-            <div style={{ marginTop: 8, height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+            <div style={{ marginTop: 8, height: 4, borderRadius: 2, background: 'var(--line)', overflow: 'hidden' }}>
               <div
                 style={{
                   width: `${Math.min(100, last?.ram || 0)}%`,
                   height: '100%',
-                  background: (last?.ram ?? 0) > 80 ? '#ef4444' : '#818cf8'
+                  background: (last?.ram ?? 0) > 80 ? 'var(--r)' : 'var(--g)'
                 }}
               />
             </div>
           </Card>
 
           {/* Storage / Partition Card */}
-          <Card className="card-3d" style={{ padding: '14px 16px' }}>
+          <Card style={{ padding: '14px 16px', marginBottom: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span className="dim" style={{ fontSize: 12, fontWeight: 600 }}>STORAGE PARTITION</span>
-              <HardDrive size={15} color="#34d399" />
+              <span className="dim" style={{ fontSize: 11 }}>Storage partition</span>
+              <HardDrive size={14} color="var(--dim)" />
             </div>
-            <div style={{ fontSize: 26, fontWeight: 800, margin: '6px 0', color: (last?.disk ?? 0) > 85 ? '#f87171' : '#34d399' }}>
+            <div className="stat" style={{ margin: '4px 0' }}>
               {last?.disk != null ? `${last.disk}%` : '42%'}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--dim, #94a3b8)' }}>
-              Root Partition Mounted
+            <div style={{ fontSize: 11, color: 'var(--dim)' }}>
+              Root partition
             </div>
-            <div style={{ marginTop: 8, height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+            <div style={{ marginTop: 8, height: 4, borderRadius: 2, background: 'var(--line)', overflow: 'hidden' }}>
               <div
                 style={{
                   width: `${Math.min(100, last?.disk || 42)}%`,
                   height: '100%',
-                  background: (last?.disk ?? 0) > 85 ? '#ef4444' : '#34d399'
+                  background: (last?.disk ?? 0) > 85 ? 'var(--r)' : 'var(--g)'
                 }}
               />
             </div>
@@ -480,17 +454,16 @@ export default function Overview({ src = 'both', bump }) {
         </div>
       </div>
 
-      {/* ── 3. 6-Vector Attack Surface Matrix (MITRE ATT&CK Mapping) ── */}
+      {/* ── 3. Security Vector Matrix ── */}
       <Card
-        className="card-3d"
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Layers size={17} color="var(--accent, #818cf8)" />
-              <span>Multi-Vector Security Sentinel Matrix (MITRE ATT&CK Defense)</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Layers size={15} color="var(--dim)" />
+              <span>Inspection vectors</span>
             </span>
-            <span className="dim" style={{ fontSize: 11, fontWeight: 500 }}>
-              6 Vectors Inspected In Parallel
+            <span className="dim" style={{ fontSize: 11 }}>
+              6 vectors active
             </span>
           </div>
         }
@@ -505,66 +478,56 @@ export default function Overview({ src = 'both', bump }) {
               <a
                 key={v.key}
                 href={`#/${v.key}`}
-                className="card-3d"
                 style={{
                   textDecoration: 'none',
                   color: 'inherit',
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: `1.5px solid ${isClean ? 'rgba(255,255,255,0.08)' : 'rgba(239,68,68,0.4)'}`,
-                  borderRadius: 10,
+                  background: 'var(--bg)',
+                  border: `1px solid ${isClean ? 'var(--line)' : 'rgba(229, 72, 77, 0.4)'}`,
+                  borderRadius: 8,
                   padding: '12px 14px',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 12,
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  position: 'relative'
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = isClean ? 'var(--accent, #818cf8)' : '#ef4444'
-                  e.currentTarget.style.transform = 'translateY(-2px)'
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = isClean ? 'rgba(255,255,255,0.08)' : 'rgba(239,68,68,0.4)'
-                  e.currentTarget.style.transform = 'none'
+                  transition: 'border-color 0.15s ease'
                 }}
               >
                 <div
                   style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: 8,
-                    background: isClean ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.15)',
-                    border: `1px solid ${isClean ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.4)'}`,
-                    color: isClean ? '#34d399' : '#f87171',
+                    width: 36,
+                    height: 36,
+                    borderRadius: 6,
+                    background: 'var(--panel-hover)',
+                    border: '1px solid var(--line)',
+                    color: isClean ? 'var(--g)' : 'var(--r)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     flexShrink: 0
                   }}
                 >
-                  <Icon size={18} />
+                  <Icon size={16} />
                 </div>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg, #f1f5f9)' }}>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--fg)' }}>
                       {v.label}
                     </span>
-                    <span style={{ fontSize: 9.5, padding: '1px 6px', borderRadius: 4, background: 'rgba(255,255,255,0.06)', color: 'var(--dim, #94a3b8)', fontWeight: 700 }}>
+                    <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: 'var(--panel-hover)', color: 'var(--dim)', fontFamily: 'monospace' }}>
                       {v.mitre}
                     </span>
                   </div>
 
-                  <div style={{ fontSize: 11, color: 'var(--dim, #94a3b8)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 11, color: 'var(--dim)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {v.target}
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, fontSize: 11 }}>
-                    <span style={{ color: isClean ? '#34d399' : '#f87171', fontWeight: 700 }}>
-                      {isClean ? '● PROTECTED' : `▲ ${modAlerts.length} ANOMALIES`}
+                    <span style={{ color: isClean ? 'var(--g)' : 'var(--r)', fontWeight: 500 }}>
+                      {isClean ? '● Protected' : `▲ ${modAlerts.length} anomalies`}
                     </span>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: 'var(--accent, #818cf8)', fontSize: 11 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: 'var(--dim)', fontSize: 11 }}>
                       Inspect <ExternalLink size={10} />
                     </span>
                   </div>
@@ -577,40 +540,39 @@ export default function Overview({ src = 'both', bump }) {
 
       {/* ── 4. Live Forensic Incident Feed + Hardware Diagnostics ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16 }}>
-        {/* Recent alerts (Strictly preserves Vitest seen('runs from a deleted binary')) */}
+        {/* Recent alerts (Preserves Vitest 'runs from a deleted binary') */}
         <Card
-          className="card-3d"
           title={
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <AlertTriangle size={16} color="var(--a, #f59e0b)" />
-                <span>Forensic Incident Feed & Rapid Triage</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <AlertTriangle size={15} color="var(--a)" />
+                <span>Recent alerts</span>
               </span>
               <span className="dim" style={{ fontSize: 11 }}>
-                {al.length} Total Logged
+                {al.length} total
               </span>
             </div>
           }
         >
           {al.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '36px 0', color: 'var(--dim, #94a3b8)' }}>
-              <CheckCircle2 size={32} color="#34d399" style={{ display: 'inline-block', marginBottom: 8 }} />
-              <div style={{ fontWeight: 600, color: 'var(--fg, #f1f5f9)' }}>Host State Clean</div>
-              <div style={{ fontSize: 12, marginTop: 4 }}>No anomalous indicators detected. Run full scan to re-verify.</div>
+            <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--dim)' }}>
+              <CheckCircle2 size={24} color="var(--g)" style={{ display: 'inline-block', marginBottom: 6 }} />
+              <div style={{ fontWeight: 500, color: 'var(--fg)' }}>Host state clean</div>
+              <div style={{ fontSize: 12, marginTop: 2 }}>No anomalous indicators detected. Run full scan to verify.</div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {al.slice(0, 5).map(a => (
                 <div
                   key={a.id}
                   style={{
-                    background: 'rgba(255,255,255,0.02)',
-                    border: '1px solid var(--line, rgba(255,255,255,0.08))',
-                    borderRadius: 8,
-                    padding: '10px 12px',
+                    background: 'var(--bg)',
+                    border: '1px solid var(--line)',
+                    borderRadius: 6,
+                    padding: '8px 10px',
                     display: 'flex',
                     alignItems: 'flex-start',
-                    gap: 10
+                    gap: 8
                   }}
                 >
                   <Badge
@@ -619,11 +581,11 @@ export default function Overview({ src = 'both', bump }) {
                   />
 
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--fg, #f1f5f9)', lineHeight: 1.4 }}>
+                    <div style={{ fontSize: 12, color: 'var(--fg)', lineHeight: 1.4 }}>
                       {a.message}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--dim, #94a3b8)', marginTop: 4 }}>
-                      <span style={{ textTransform: 'uppercase', fontWeight: 600 }}>[{a.module}]</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--dim)', marginTop: 2 }}>
+                      <span style={{ fontFamily: 'monospace' }}>[{a.module}]</span>
                       <span>•</span>
                       <span>Source: {a.source}</span>
                       <span>•</span>
@@ -638,21 +600,16 @@ export default function Overview({ src = 'both', bump }) {
                       disabled={acking === a.id}
                       title="Acknowledge alert"
                       style={{
-                        padding: '3px 8px',
-                        fontSize: 10.5,
-                        borderRadius: 6,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        borderColor: 'rgba(16,185,129,0.4)',
-                        color: '#34d399',
+                        padding: '2px 6px',
+                        fontSize: 10,
+                        color: 'var(--g)',
                         flexShrink: 0
                       }}
                     >
-                      <Check size={12} /> {acking === a.id ? '…' : 'Ack'}
+                      <Check size={11} /> {acking === a.id ? '…' : 'Ack'}
                     </button>
                   ) : (
-                    <span style={{ fontSize: 10, color: 'var(--dim)', fontStyle: 'italic', flexShrink: 0 }}>Acked</span>
+                    <span style={{ fontSize: 10, color: 'var(--dim)', flexShrink: 0 }}>Acked</span>
                   )}
                 </div>
               ))}
@@ -662,15 +619,14 @@ export default function Overview({ src = 'both', bump }) {
 
         {/* Hardware Architecture & Security Posture Deck */}
         <Card
-          className="card-3d"
           title={
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Server size={16} color="var(--c, #38bdf8)" />
-                <span>Hardware Architecture & Kernel Specs</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Server size={15} color="var(--dim)" />
+                <span>Host specifications</span>
               </span>
               <span className="dim" style={{ fontSize: 11 }}>
-                Live Host Metadata
+                Live metadata
               </span>
             </div>
           }
@@ -678,69 +634,68 @@ export default function Overview({ src = 'both', bump }) {
           {info ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--line)' }}>
-                  <div className="dim" style={{ fontSize: 10.5, textTransform: 'uppercase' }}>Operating System</div>
-                  <b style={{ fontSize: 12, color: 'var(--fg)' }}>{info.os || 'Windows/Linux Hybrid'}</b>
+                <div style={{ background: 'var(--bg)', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--line)' }}>
+                  <div className="dim" style={{ fontSize: 10 }}>Operating system</div>
+                  <div style={{ fontSize: 12, color: 'var(--fg)', fontWeight: 500, marginTop: 2 }}>{info.os || 'Hybrid system'}</div>
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--line)' }}>
-                  <div className="dim" style={{ fontSize: 10.5, textTransform: 'uppercase' }}>Architecture</div>
-                  <b style={{ fontSize: 12, color: 'var(--fg)' }}>{info.kernel || 'x86_64 / NT 10.0'}</b>
+                <div style={{ background: 'var(--bg)', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--line)' }}>
+                  <div className="dim" style={{ fontSize: 10 }}>Kernel / architecture</div>
+                  <div style={{ fontSize: 12, color: 'var(--fg)', fontWeight: 500, marginTop: 2 }}>{info.kernel || 'x86_64'}</div>
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--line)' }}>
-                  <div className="dim" style={{ fontSize: 10.5, textTransform: 'uppercase' }}>Active Uptime</div>
-                  <b style={{ fontSize: 12, color: 'var(--fg)' }}>{`${Math.floor((info.uptime_s || 0) / 3600)}h ${Math.floor(((info.uptime_s || 0) % 3600) / 60)}m`}</b>
+                <div style={{ background: 'var(--bg)', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--line)' }}>
+                  <div className="dim" style={{ fontSize: 10 }}>Uptime</div>
+                  <div style={{ fontSize: 12, color: 'var(--fg)', fontWeight: 500, marginTop: 2 }}>{`${Math.floor((info.uptime_s || 0) / 3600)}h ${Math.floor(((info.uptime_s || 0) % 3600) / 60)}m`}</div>
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--line)' }}>
-                  <div className="dim" style={{ fontSize: 10.5, textTransform: 'uppercase' }}>Processor Cores</div>
-                  <b style={{ fontSize: 12, color: 'var(--fg)' }}>{info.cpus || 8} Logical Cores</b>
+                <div style={{ background: 'var(--bg)', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--line)' }}>
+                  <div className="dim" style={{ fontSize: 10 }}>Processor cores</div>
+                  <div style={{ fontSize: 12, color: 'var(--fg)', fontWeight: 500, marginTop: 2 }}>{info.cpus || 8} logical cores</div>
                 </div>
               </div>
 
               {/* Quick Jump & Download Utilities */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 4 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 2 }}>
                 <a href="/api/report?fmt=html" download style={{ textDecoration: 'none' }}>
-                  <button className="btn btn-sm" style={{ width: '100%', fontSize: 11, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-                    <Download size={12} /> HTML Audit
+                  <button className="btn btn-sm" style={{ width: '100%', fontSize: 11, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    <Download size={11} /> HTML audit
                   </button>
                 </a>
                 <a href="/api/report?fmt=json" download style={{ textDecoration: 'none' }}>
-                  <button className="btn btn-sm" style={{ width: '100%', fontSize: 11, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-                    <Download size={12} /> JSON Stream
+                  <button className="btn btn-sm" style={{ width: '100%', fontSize: 11, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    <Download size={11} /> JSON stream
                   </button>
                 </a>
                 <a href="#/demo" style={{ textDecoration: 'none' }}>
-                  <button className="btn btn-sm" style={{ width: '100%', fontSize: 11, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5, borderColor: 'rgba(239,68,68,0.4)', color: '#f87171' }}>
-                    <Zap size={12} /> Demo Lab
+                  <button className="btn btn-sm btn-danger" style={{ width: '100%', fontSize: 11, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    <Zap size={11} /> Demo lab
                   </button>
                 </a>
               </div>
             </div>
           ) : (
             <div className="dim" style={{ fontSize: 12, textAlign: 'center', padding: '16px 0' }}>
-              Fetching kernel hardware specs…
+              Fetching system specifications…
             </div>
           )}
         </Card>
       </div>
 
-      {/* ── 5. Risk score history (Strictly preserves Vitest seen('Risk score history')) ── */}
+      {/* ── 5. Risk score history (Preserves Vitest 'Risk score history') ── */}
       <Card
-        className="card-3d"
         title={
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Activity size={16} color="var(--accent, #818cf8)" />
-              <span>Risk score history (24-Hour Behavioral Threat Horizon)</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Activity size={15} color="var(--dim)" />
+              <span>Risk score history</span>
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 11 }}>
-              <span style={{ color: '#34d399', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#34d399' }} /> Safe (&lt;30)
+              <span style={{ color: 'var(--g)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--g)' }} /> Safe (&lt;30)
               </span>
-              <span style={{ color: '#f59e0b', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b' }} /> Elevated (30-70)
+              <span style={{ color: 'var(--a)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--a)' }} /> Elevated (30-70)
               </span>
-              <span style={{ color: '#ef4444', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444' }} /> Critical (&gt;70)
+              <span style={{ color: 'var(--r)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--r)' }} /> Critical (&gt;70)
               </span>
             </div>
           </div>
@@ -751,27 +706,27 @@ export default function Overview({ src = 'both', bump }) {
             <AreaChart data={hist} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="scoreHorizonGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={score < 50 ? '#10b981' : '#ef4444'} stopOpacity={0.4} />
-                  <stop offset="95%" stopColor={score < 50 ? '#10b981' : '#ef4444'} stopOpacity={0.0} />
+                  <stop offset="5%" stopColor={score < 50 ? 'var(--g)' : 'var(--r)'} stopOpacity={0.2} />
+                  <stop offset="95%" stopColor={score < 50 ? 'var(--g)' : 'var(--r)'} stopOpacity={0.0} />
                 </linearGradient>
               </defs>
-              <XAxis dataKey="t" stroke="var(--dim, #7982a9)" tick={{ fontSize: 11 }} />
-              <YAxis domain={[0, 100]} stroke="var(--dim, #7982a9)" tick={{ fontSize: 11 }} />
+              <XAxis dataKey="t" stroke="var(--dim)" tick={{ fontSize: 11 }} />
+              <YAxis domain={[0, 100]} stroke="var(--dim)" tick={{ fontSize: 11 }} />
               <Tooltip
                 contentStyle={{
-                  background: 'rgba(15, 23, 42, 0.95)',
-                  border: '1px solid rgba(99, 102, 241, 0.3)',
-                  color: '#f8fafc',
-                  borderRadius: 8,
+                  background: 'var(--panel)',
+                  border: '1px solid var(--line)',
+                  color: 'var(--fg)',
+                  borderRadius: 6,
                   fontSize: 12,
-                  boxShadow: '0 8px 20px rgba(0,0,0,0.4)'
+                  boxShadow: 'var(--shadow-md)'
                 }}
               />
               <Area
                 type="monotone"
                 dataKey="score"
-                stroke={score < 50 ? '#10b981' : '#ef4444'}
-                strokeWidth={2.5}
+                stroke={score < 50 ? 'var(--g)' : 'var(--r)'}
+                strokeWidth={2}
                 fillOpacity={1}
                 fill="url(#scoreHorizonGrad)"
                 isAnimationActive={false}

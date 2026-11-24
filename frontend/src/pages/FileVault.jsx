@@ -34,26 +34,23 @@ export default function FileVault({ src }) {
 
   return (
     <div>
-      {/* ── 3D Security Module Banner ── */}
-      <div className="status-banner-3d">
+      {/* ── File Integrity Vault Header ── */}
+      <div className="card" style={{ padding: '16px 20px', marginBottom: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <FileCheck2 size={22} color="var(--c)" />
-              <h3 style={{ margin: 0, color: 'var(--fg)', fontSize: 16 }}>
-                Cryptographic File Integrity Vault & SHA-256 Tamper Sentinel
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <FileCheck2 size={18} color="var(--dim)" />
+              <h3 style={{ margin: 0, color: 'var(--fg)', fontSize: 16, fontWeight: 600 }}>
+                File integrity vault
               </h3>
-              <Badge v={changed.length > 0 ? `${changed.length} MODIFIED` : 'INTACT'} tone={changed.length > 0 ? 'r' : 'g'} />
+              <Badge v={changed.length > 0 ? `${changed.length} modified` : 'Intact'} tone={changed.length > 0 ? 'r' : 'g'} />
             </div>
-            <p className="dim" style={{ fontSize: 13, margin: '4px 0 0', maxWidth: 740, lineHeight: 1.5 }}>
-              Continuous cryptographic hashing of critical OS configuration files (<code style={{ color: 'var(--c)' }}>/etc/passwd</code>, <code style={{ color: 'var(--c)' }}>/etc/shadow</code>, <code style={{ color: 'var(--c)' }}>/etc/sudoers</code>).
-              Instantly detects tampering, privilege escalation attempts, or unauthorized root user additions.
+            <p className="dim" style={{ fontSize: 12, margin: '4px 0 0', maxWidth: 740, lineHeight: 1.5 }}>
+              Cryptographic verification of system configuration files (/etc/passwd, /etc/shadow, /etc/sudoers). Detects unauthorized modifications.
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className="badge c" style={{ fontSize: 11, padding: '4px 10px' }}>
-              Watched Files: {rows.length}
-            </span>
+            <Badge v={`Watched: ${rows.length}`} tone="c" />
           </div>
         </div>
       </div>

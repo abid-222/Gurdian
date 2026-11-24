@@ -148,18 +148,18 @@ export function Top({ rows = [] }) {
     topBy(rows, k).map(r => (
       <div key={r.source + r.pid} style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '6px 0' }}>
         <Badge v={r.source} />
-        <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>
+        <span style={{ fontWeight: 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>
           {r.name}
         </span>
-        <b style={{ marginLeft: 'auto', color: k === 'cpu' && Number(r.cpu) > 50 ? 'var(--r)' : 'var(--fg)' }}>
+        <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums', color: k === 'cpu' && Number(r.cpu) > 50 ? 'var(--r)' : 'var(--fg)' }}>
           {k === 'mem' ? Math.round(r.mem / 1024) : r.cpu}{u}
-        </b>
+        </span>
       </div>
     ))
   return (
     <div className="grid" style={{ marginBottom: 16 }}>
-      <Card className="card-3d" title="Top 5 CPU (real, 100 = one core)">{L('cpu', '%')}</Card>
-      <Card className="card-3d" title="Top 5 RAM">{L('mem', ' MB')}</Card>
+      <Card title="Top 5 CPU (real, 100 = one core)">{L('cpu', '%')}</Card>
+      <Card title="Top 5 RAM">{L('mem', ' MB')}</Card>
     </div>
   )
 }
@@ -240,40 +240,39 @@ export default function Process({ src }) {
 
   return (
     <div>
-      {/* ── 3D Security Module Banner ── */}
-      <div className="status-banner-3d">
+      {/* ── Process Monitor Header ── */}
+      <div className="card" style={{ padding: '16px 20px', marginBottom: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14 }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
               <div
                 style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 10,
-                  background: 'linear-gradient(135deg, rgba(99,102,241,0.2) 0%, rgba(56,189,248,0.2) 100%)',
-                  border: '1px solid rgba(99,102,241,0.4)',
+                  width: 36,
+                  height: 36,
+                  borderRadius: 6,
+                  background: 'var(--panel-hover)',
+                  border: '1px solid var(--line)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: 'var(--c)',
-                  boxShadow: '0 0 14px rgba(99,102,241,0.2)'
+                  color: 'var(--fg)'
                 }}
               >
-                <Cpu size={22} strokeWidth={2.2} />
+                <Cpu size={18} strokeWidth={1.8} />
               </div>
               <div>
-                <h3 style={{ margin: 0, color: 'var(--fg)', fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em' }}>
-                  Live Process Monitor & 3D Tree Explorer
+                <h3 style={{ margin: 0, color: 'var(--fg)', fontSize: 16, fontWeight: 600 }}>
+                  Process monitor
                 </h3>
                 <span className="dim" style={{ fontSize: 11 }}>
-                  Real-time application hierarchy, resource consumption, and threat inspection
+                  Application hierarchy, resource consumption, and inspection
                 </span>
               </div>
-              <Badge v={badCount > 0 ? `${badCount} THREATS DETECTED` : 'ALL PROCESSES SECURE'} tone={badCount > 0 ? 'r' : 'g'} />
+              <Badge v={badCount > 0 ? `${badCount} suspicious` : 'Processes normal'} tone={badCount > 0 ? 'r' : 'g'} />
             </div>
 
-            <p className="dim" style={{ fontSize: 12.5, margin: '6px 0 0', maxWidth: 740, lineHeight: 1.5 }}>
-              Continuously monitors all running programs and background processes. Instantly alerts you to memory-resident threats, suspicious temporary scripts, or unexpected processor spikes.
+            <p className="dim" style={{ fontSize: 12, margin: '6px 0 0', maxWidth: 740, lineHeight: 1.5 }}>
+              Monitors active system processes. Inspects execution binaries, CPU/memory usage, and parent process lineage.
             </p>
           </div>
 
@@ -285,23 +284,19 @@ export default function Process({ src }) {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 6,
-                background: livePoll ? 'rgba(16,185,129,0.18)' : 'rgba(255,255,255,0.05)',
-                borderColor: livePoll ? 'var(--g)' : 'var(--line)',
-                color: livePoll ? 'var(--g)' : 'var(--fg)',
-                fontWeight: 600
+                gap: 6
               }}
               title="Toggle automatic live process polling every 3.5s"
             >
               <Radio size={13} className={livePoll ? 'spin' : ''} />
-              <span>{livePoll ? 'Live Streaming: ON' : 'Live Stream: OFF'}</span>
+              <span>{livePoll ? 'Live stream: on' : 'Live stream: off'}</span>
             </button>
 
             <span className="dim" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Clock size={11} /> Last Scanned: {lastScanAt}
+              <Clock size={11} /> Last scan: {lastScanAt}
             </span>
             <span className="dim" style={{ fontSize: 11 }}>
-              Active PIDs: <b>{all.length}</b> ({rows.length} displayed)
+              PIDs: <b>{all.length}</b> ({rows.length} shown)
             </span>
           </div>
         </div>
@@ -322,29 +317,18 @@ export default function Process({ src }) {
           }}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
-          <FolderTree size={14} /> Tree View
+          <FolderTree size={13} /> Tree View
         </Btn>
 
         {/* List View Toggle button */}
         <Btn
-          on={!tree && viewMode === 'table'}
+          on={!tree}
           onClick={() => {
             setTree(false)
-            setViewMode('table')
           }}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
-          <List size={14} /> List View
-        </Btn>
-
-        {/* 3D Visual Deck View */}
-        <Btn
-          on={viewMode === 'deck3d'}
-          onClick={() => setViewMode(viewMode === 'deck3d' ? 'table' : 'deck3d')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-          title="Toggle 3D Process Tree Hierarchy Explorer Deck"
-        >
-          <Layers size={14} /> 3D Tree Explorer
+          <List size={13} /> List View
         </Btn>
 
         {/* Show Suspicious Only button */}
@@ -359,7 +343,7 @@ export default function Process({ src }) {
             color: bad ? 'var(--r)' : undefined
           }}
         >
-          <ShieldAlert size={14} /> Show Suspicious Only
+          <ShieldAlert size={13} /> Show Suspicious Only
         </Btn>
 
         {/* Save Baseline button */}
@@ -372,7 +356,7 @@ export default function Process({ src }) {
           }}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
-          <Save size={14} /> Save Baseline
+          <Save size={13} /> Save Baseline
         </Btn>
 
         <Btn
@@ -380,12 +364,12 @@ export default function Process({ src }) {
           disabled={!all.length}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
-          <Download size={14} /> Export CSV
+          <Download size={13} /> Export CSV
         </Btn>
 
         <span className="dim" style={{ marginLeft: 'auto', fontSize: 12 }}>
-          {all.length > 0 && `${rows.length} processes · read-only safe`}
-          {msg && <b style={{ color: 'var(--g)', marginLeft: 6 }}>· {msg}</b>}
+          {all.length > 0 && `${rows.length} processes`}
+          {msg && <span style={{ color: 'var(--g)', marginLeft: 6 }}>· {msg}</span>}
         </span>
       </div>
 
@@ -445,99 +429,6 @@ export default function Process({ src }) {
       {/* Top CPU and RAM */}
       {all.length > 0 && <Top rows={all} />}
 
-      {/* ── 3D Process Tree Visualizer Mode (Deck View) ── */}
-      {viewMode === 'deck3d' && all.length > 0 && (
-        <Card
-          className="card-3d"
-          style={{ marginBottom: 16 }}
-          title={
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Layers size={16} color="var(--c)" />
-                <span>3D Process Hierarchy Tree Visualizer</span>
-              </span>
-              <span className="dim" style={{ fontSize: 11, fontWeight: 400 }}>
-                Click node to focus parent chain
-              </span>
-            </div>
-          }
-        >
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12, maxHeight: 420, overflowY: 'auto', padding: 4 }}>
-            {topRoots.map(root => {
-              const rootKey = root.source + root.pid
-              const kids = all.filter(r => r.source === root.source && (r.ppid === root.pid || String(r.ppid) === String(root.pid)))
-              const isSuspect = root.flag !== 'ok'
-
-              return (
-                <div
-                  key={rootKey}
-                  onClick={() => click(root)}
-                  style={{
-                    background: isSuspect ? 'rgba(244,63,94,0.08)' : 'var(--panel-2, rgba(255,255,255,0.02))',
-                    border: `1px solid ${isSuspect ? 'rgba(244,63,94,0.35)' : 'var(--line)'}`,
-                    borderRadius: 10,
-                    padding: 12,
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 14px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.06)',
-                    transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: isSuspect ? 'var(--r)' : 'var(--fg)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Terminal size={14} color="var(--c)" />
-                      <span>{root.name}</span>
-                    </span>
-                    <Badge v={`PID ${root.pid}`} tone="c" />
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 8, fontSize: 11, color: 'var(--dim)', marginBottom: 8 }}>
-                    <span>CPU: <b>{root.cpu ?? '0'}%</b></span>
-                    <span>MEM: <b>{root.mem ? Math.round(root.mem / 1024) + 'MB' : '—'}</b></span>
-                    <PlatformBadge v={root.source} />
-                  </div>
-
-                  {/* Child nodes */}
-                  {kids.length > 0 && (
-                    <div style={{ borderTop: '1px solid var(--line)', paddingTop: 8, marginTop: 4 }}>
-                      <div className="dim" style={{ fontSize: 10, textTransform: 'uppercase', marginBottom: 4 }}>
-                        Sub-processes ({kids.length}):
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        {kids.slice(0, 4).map(k => (
-                          <div
-                            key={k.source + k.pid}
-                            style={{
-                              fontSize: 11,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              background: 'rgba(0,0,0,0.2)',
-                              padding: '2px 6px',
-                              borderRadius: 4
-                            }}
-                          >
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <ChevronRight size={10} color="var(--c)" />
-                              <span>{k.name}</span>
-                            </span>
-                            <span className="dim mono" style={{ fontSize: 10 }}>PID {k.pid}</span>
-                          </div>
-                        ))}
-                        {kids.length > 4 && (
-                          <span className="dim" style={{ fontSize: 10, paddingLeft: 6 }}>
-                            +{kids.length - 4} more children...
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </Card>
-      )}
-
       {/* Main content: table + detail panel */}
       {all.length > 0 && (
         <div className="two" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 12, alignItems: 'start' }}>
@@ -568,7 +459,7 @@ export default function Process({ src }) {
           </div>
 
           {/* Detail panel */}
-          <Card className="card-3d" title="Process Details">
+          <Card title="Process Details">
             {sel ? (
               <div style={{ fontSize: '0.9em', lineHeight: 1.7 }}>
                 <p style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', margin: '0 0 10px' }}>

@@ -41,25 +41,23 @@ export default function Network({ src }) {
 
   return (
     <div>
-      {/* ── 3D Security Module Banner ── */}
-      <div className="status-banner-3d">
+      {/* ── Network Security Header ── */}
+      <div className="card" style={{ padding: '16px 20px', marginBottom: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <Radio size={22} color="var(--c)" />
-              <h3 style={{ margin: 0, color: 'var(--fg)', fontSize: 16 }}>
-                Network Port Sentinel & Socket Backdoor Auditor
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <Radio size={18} color="var(--dim)" />
+              <h3 style={{ margin: 0, color: 'var(--fg)', fontSize: 16, fontWeight: 600 }}>
+                Network perimeter
               </h3>
-              <Badge v={listen.length > 0 ? `${listen.length} LISTENING` : 'MONITORED'} tone="g" />
+              <Badge v={listen.length > 0 ? `${listen.length} listening` : 'Monitored'} tone="g" />
             </div>
-            <p className="dim" style={{ fontSize: 13, margin: '4px 0 0', maxWidth: 740, lineHeight: 1.5 }}>
-              Audits TCP/UDP sockets and remote established connections. Flags unbaselined listening ports (<code style={{ color: 'var(--r)' }}>NEW</code> badge) and maps active traffic per binary in real time.
+            <p className="dim" style={{ fontSize: 12, margin: '4px 0 0', maxWidth: 740, lineHeight: 1.5 }}>
+              Audits TCP/UDP sockets and remote connections. Flags unbaselined listening ports and maps active traffic per binary.
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className="badge c" style={{ fontSize: 11, padding: '4px 10px' }}>
-              Established: {est.length}
-            </span>
+            <Badge v={`Established: ${est.length}`} tone="c" />
           </div>
         </div>
       </div>
