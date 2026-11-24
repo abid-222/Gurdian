@@ -14,7 +14,7 @@ import {
   ChevronRight,
   Terminal
 } from 'lucide-react'
-import { saveBaseline, toCsv } from '../api'
+import { saveBaseline, toCsv, api } from '../api'
 import { useScan } from '../hooks/useScan'
 import { Badge, Btn, Card } from '../components/ui'
 import ProcessTreeGraph from '../components/ProcessTreeGraph'
@@ -174,7 +174,8 @@ export default function Process({ src }) {
   const [bad, setBad]           = useState(false)
   const [open, setOpen]         = useState(new Set())
   const [sel, setSel]           = useState(null)
-  const [livePoll, setLivePoll] = useState(false)
+  const [livePoll, setLivePoll] = useState(true)
+  const [killing, setKilling]   = useState(false)
   const [lastScanAt, setLastScanAt] = useState(new Date().toLocaleTimeString())
 
   const all  = data?.rows || []
@@ -182,13 +183,13 @@ export default function Process({ src }) {
   const view = tree ? flat(rows, open) : rows
   const badCount = all.filter(r => r.flag !== 'ok').length
 
-  // Live Auto-Polling Engine (every 3.5 seconds)
+  // Live Auto-Polling Engine (every 4 seconds, bypassing 5s cache)
   useEffect(() => {
     if (!livePoll) return
     const interval = setInterval(() => {
-      run()
+      run(true)
       setLastScanAt(new Date().toLocaleTimeString())
-    }, 3500)
+    }, 4000)
     return () => clearInterval(interval)
   }, [livePoll, run])
 
@@ -331,7 +332,7 @@ export default function Process({ src }) {
 
       {/* ── Toolbar & Control Deck ── */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14, alignItems: 'center' }}>
-        <Btn onClick={() => { run(); setLastScanAt(new Date().toLocaleTimeString()) }} loading={loading}>
+        <Btn onClick={() => { run(true); setLastScanAt(new Date().toLocaleTimeString()) }} loading={loading}>
           Scan Processes
         </Btn>
 
@@ -535,6 +536,29 @@ export default function Process({ src }) {
                 <p className="dim" style={{ marginTop: 10, wordBreak: 'break-all', fontSize: 11.5 }}>
                   <b>Executable Path:</b> <code className="mono">{sel.exe_path || '—'}</code>
                 </p>
+
+                <div style={{ marginTop: 10 }}>
+                  <Btn
+                    variant="danger"
+                    loading={killing}
+                    onClick={async () => {
+                      setKilling(true)
+                      try {
+                        await api(`/api/process/${sel.pid}/kill`, 'POST')
+                        setMsg(`Terminated ${sel._rawName || sel.name} (PID ${sel.pid})`)
+                        setSel(null)
+                        await run(true)
+                      } catch (ex) {
+                        setMsg(ex.message || 'Kill failed')
+                      } finally {
+                        setKilling(false)
+                      }
+                    }}
+                    style={{ width: '100%', justifyContent: 'center' }}
+                  >
+                    Terminate Process (PID {sel.pid})
+                  </Btn>
+                </div>
 
                 {chain(sel).length > 0 && (
                   <div style={{ borderTop: '1px solid var(--line)', paddingTop: 10, marginTop: 10 }}>

@@ -16,46 +16,50 @@ const TEAM = [
     name: 'Md. Abid Hossain',
     id: 'DIU-241-15-222',
     initials: 'AH',
-    role: 'Team Lead & Backend Systems Architect',
+    role: 'Team Lead & Full-Stack Systems Architect',
     lead: true,
-    modules: ['FastAPI Engine', 'Risk Engine (19 Rules)', 'SQLite WAL Database', 'Cross-Platform Bridges', 'Live WebSocket Telemetry'],
-    contribution: 'Architected the core asynchronous daemon, live kernel psutil & procfs telemetry streaming, SQLite schema design, and the mathematical threat evaluation algorithm.'
+    modules: ['FastAPI Engine', 'Risk Engine (19 Rules)', 'Deadlock Lab', 'React 18 UI', 'SQLite WAL'],
+    contribution: 'Architected the core asynchronous daemon, live kernel telemetry streaming, 3D Deadlock & Process Tree visualizers, optional PBKDF2 Auth, and MITRE ATT&CK behavioral engine.'
   },
   {
-    name: 'Tanvir Ahmed',
-    id: 'DIU-241-15-223',
-    initials: 'TA',
-    role: 'Linux Collectors & Bash Core Specialist',
+    name: 'Open Slot #2',
+    id: 'TBD',
+    initials: '02',
+    role: 'Slot Available — To Be Added',
     lead: false,
-    modules: ['Linux Collectors', 'Proc/SysFS Engine', 'Auth Log & SUID Audit', 'File Vault Integrity', 'Cron Daemon Watcher'],
-    contribution: 'Authored POSIX-compliant bash collectors, cryptographic SHA-256 baselines, SUID privilege escalation trackers, and SSH/sudo brute-force detection heuristics.'
+    empty: true,
+    modules: ['Reserved'],
+    contribution: 'Team member slot reserved for future assignment.'
   },
   {
-    name: 'Mahmudul Hasan',
-    id: 'DIU-241-15-224',
-    initials: 'MH',
-    role: 'Windows Bridge & Systems Interop Engineer',
+    name: 'Open Slot #3',
+    id: 'TBD',
+    initials: '03',
+    role: 'Slot Available — To Be Added',
     lead: false,
-    modules: ['Windows Bridge', 'PowerShell CIM/WMI', 'WinEvent Logs (4624/4625)', 'PnP USB Detection', 'Task Scheduler Audit'],
-    contribution: 'Built native Windows bridge scripts using CIM/WMI instances, Windows Security Event Log parser, interactive session auditors, and registry persistence detectors.'
+    empty: true,
+    modules: ['Reserved'],
+    contribution: 'Team member slot reserved for future assignment.'
   },
   {
-    name: 'Sadia Rahman',
-    id: 'DIU-241-15-225',
-    initials: 'SR',
-    role: 'Frontend Architect & UI/UX Cyber Engineer',
+    name: 'Open Slot #4',
+    id: 'TBD',
+    initials: '04',
+    role: 'Slot Available — To Be Added',
     lead: false,
-    modules: ['React 18 Dashboard', 'Theme Engine (Dark/Light)', 'Interactive Telemetry Charts', 'xterm.js Safe Terminal', 'Command Palette'],
-    contribution: 'Engineered high-performance glassmorphic UI, 3D card physics, multi-palette theme engine, interactive forensic report previews, and keyboard-driven command navigation.'
+    empty: true,
+    modules: ['Reserved'],
+    contribution: 'Team member slot reserved for future assignment.'
   },
   {
-    name: 'Nafis Fuad',
-    id: 'DIU-241-15-226',
-    initials: 'NF',
-    role: 'Security Analyst & QA Automation Lead',
+    name: 'Open Slot #5',
+    id: 'TBD',
+    initials: '05',
+    role: 'Slot Available — To Be Added',
     lead: false,
-    modules: ['MITRE ATT&CK Mapping', 'Vitest & Pytest Automation', 'Contract Verification', 'Red-Team Attack Lab', 'Compliance Engine'],
-    contribution: 'Mapped 19 detection rules to official MITRE ATT&CK techniques, engineered end-to-end unit and contract test suites, and developed the red-team attack lab simulation harness.'
+    empty: true,
+    modules: ['Reserved'],
+    contribution: 'Team member slot reserved for future assignment.'
   }
 ]
 

@@ -58,9 +58,9 @@ def auth_events(source, rows):   # real log times, stored once even if the scan 
     return [(int(datetime.fromisoformat(r["ts"]).timestamp()), "auth", source, kind.get(r["method"], "login_failed" if r["result"] == "FAILED" else "login_ok"),
              f"{r['username']} from {r['source_ip']} ({r['method']})") for r in rows if r.get("ts") and r["method"] != "session"]
 
-def scan_one(module, source):
+def scan_one(module, source, fresh=False):
     hit = CACHE.get((module, source))
-    if hit and time.time() - hit[0] < 5: return hit[1]            # 5 s cache
+    if not fresh and hit and time.time() - hit[0] < 5: return hit[1]            # 5 s cache
     t0 = time.time(); out, errs = run_script(source, module)
     rows, e2 = parse(module, out); errs = list(dict.fromkeys(errs + e2)); base = baseline(module, source)
     annotate(module, rows, base, track(module, source, rows, int(t0)) if module in ("persistence", "usb") else None)

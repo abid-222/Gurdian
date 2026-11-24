@@ -69,13 +69,12 @@ test('settings: theme switcher and watchlist management', async () => {
   await seen('/etc/passwd')
 })
 
-test('about: 5 team members, roles, and defense highlights', async () => {
+test('about: lead member 222, 4 open slots, and defense highlights', async () => {
   render(<About />)
   await seen('Md. Abid Hossain')
-  await seen('Tanvir Ahmed')
-  await seen('Mahmudul Hasan')
-  await seen('Sadia Rahman')
-  await seen('Nafis Fuad')
+  await seen('DIU-241-15-222')
+  await seen('Open Slot #2')
+  await seen('Open Slot #5')
   await seen('Key Viva / Examiner Defense Highlights')
 })
 

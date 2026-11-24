@@ -1,17 +1,12 @@
-# 🛡️ SMART OS GUARDIAN PRO v6.0
-
-```text
-  ███████╗███╗   ███╗ █████╗ ██████╗ ████████╗     ██████╗ ███████╗    ██████╗ ██╗   ██╗ █████╗ ██████╗ ██████╗ ██╗ █████╗ ███╗   ██╗
-  ██╔════╝████╗ ████║██╔══██╗██╔══██╗╚══██╔══╝    ██╔═══██╗██╔════╝   ██╔════╝ ██║   ██║██╔══██╗██╔══██╗██╔══██╗██║██╔══██╗████╗  ██║
-  ███████╗██╔████╔██║███████║██████╔╝   ██║       ██║   ██║███████╗   ██║  ███╗██║   ██║███████║██████╔╝██║  ██║██║███████║██╔██╗ ██║
-  ╚════██║██║╚██╔╝██║██╔══██║██╔══██╗   ██║       ██║   ██║╚════██║   ██║   ██║██║   ██║██╔══██║██╔══██╗██║  ██║██║██╔══██║██║╚██╗██║
-  ███████║██║ └──═╝██║██║  ██║██║  ██║   ██║       ╚██████╔╝███████║   ╚██████╔╝╚██████╔╝██║  ██║██║  ██║██████╔╝██║██║  ██║██║ ╚████║
-  ╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝        ╚═════╝ ╚══════╝    ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝
-```
+# 🛡️ SMART OS GUARDIAN v7.0
 
 <p align="center">
-  <b>Next-Generation Real-Time Host Intrusion Detection System (HIDS) & Security Operations Center (SOC)</b><br>
-  <i>Powered by Native Linux Bash Kernel Collectors, Windows PowerShell Bridge, FastAPI, SQLite & React 18 3D Cyber UI</i>
+  <img src="docs/guardian-banner.jpg" alt="Smart OS Guardian v7.0 Banner" width="100%" />
+</p>
+
+<p align="center">
+  <b>Next-Generation Real-Time Host Intrusion Detection System (HIDS), Deadlock Engineering Lab & Security Operations Center (SOC)</b><br>
+  <i>Powered by Native Linux Bash Kernel Collectors, Windows PowerShell Bridge, FastAPI, SQLite WAL & React 18 3D Cyber UI</i>
 </p>
 
 <p align="center">
@@ -20,9 +15,16 @@
   <img src="https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.12" />
   <img src="https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
   <img src="https://img.shields.io/badge/React-18.3-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React 18" />
-  <img src="https://img.shields.io/badge/Tests-58%2F58%20Passing-brightgreen?style=for-the-badge&logo=github-actions&logoColor=white" alt="Tests" />
+  <img src="https://img.shields.io/badge/Tests-67%20Passing-brightgreen?style=for-the-badge&logo=github-actions&logoColor=white" alt="Tests" />
   <img src="https://img.shields.io/badge/Security-Zero%20Mock%20Data-blueviolet?style=for-the-badge" alt="Zero Mock" />
 </p>
+
+## ✨ What's New in v7.0
+- **Deadlock Engineering Lab (3D/2D RAG + Live PC Sandbox):** Real POSIX `flock` & Windows `.NET Mutex` deadlock creation, Dijkstra Resource Hierarchy prevention, Victim Preemption, Banker's Safety Algorithm with step-by-step timeline, and a **3-Step Live PC Custom Rule-Breaker Sandbox**.
+- **Breach & Attack Simulation (Integrated in Overview):** Animated 4-step Before → Injected → Detected → After arrow pipeline proving real-time OS detection and risk score delta.
+- **Visual Glowing Process Tree:** Top-down hierarchical process graph with app-specific icons, live auto-polling, and instant `Terminate Process` control.
+- **Unified Bash + Linux SOC Terminal:** Supports Bash pipes (`| grep`, `| head`, `| tail`, `| wc -l`, `| sort`, `| uniq`), Linux inspection (`ss`, `lsof`, `ls -la`, `uname -a`, `free -m`, `df -h`), and unified `guardian` CLI commands.
+- **Optional 3D "GUARDIAN OS" Login & Password Manager:** First-run choice between **Open Mode** and **PBKDF2-SHA256 Protected Mode**, plus top-bar `Add Password` / `Old → New Password` management.
 
 ---
 

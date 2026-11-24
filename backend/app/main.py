@@ -37,9 +37,27 @@ api = APIRouter(dependencies=[Depends(auth_http)])
 def health(): return {"ok": True, "sources": list(FOLDER)}
 
 @api.api_route("/api/scan/{module}", methods=["GET", "POST"])
-def scan(module: str, source: str = "linux"):
+def scan(module: str, source: str = "linux", fresh: bool = False):
     if module not in COLS or source not in FOLDER: raise HTTPException(404)   # fixed lists only
-    return scan_one(module, source)
+    return scan_one(module, source, fresh=fresh)
+
+@api.post("/api/process/{pid}/kill")
+def kill_process(pid: int):
+    import psutil
+    if pid <= 4 or pid == os.getpid():
+        raise HTTPException(400, "cannot terminate critical system or guardian process")
+    try:
+        p = psutil.Process(pid)
+        p.terminate()
+        CACHE.clear()
+        return {"ok": True, "pid": pid}
+    except psutil.NoSuchProcess:
+        CACHE.clear()
+        return {"ok": True, "pid": pid, "note": "already exited"}
+    except psutil.AccessDenied:
+        raise HTTPException(403, f"permission denied terminating PID {pid}")
+    except Exception as e:
+        raise HTTPException(500, str(e))
 
 @api.post("/api/baseline/{module}")
 def baseline(module: str, source: str = "linux"):

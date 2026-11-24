@@ -7,12 +7,12 @@ export const LIMITED = /admin|sudo|permission|limited|cannot read/i
 export function useScan(mod, src, auto = true) {
   const [s, setS] = useState({ data: null, loading: false, error: '', limited: false })
 
-  const run = useCallback(async () => {
+  const run = useCallback(async (fresh = false) => {
     setS(p => ({ ...p, loading: true, error: '' }))
     try {
       const sources = src === 'both' ? ['windows', 'linux'] : [src]
       const results = await Promise.allSettled(
-        sources.map(x => api(`/api/scan/${mod}?source=${x}`, 'POST'))
+        sources.map(x => api(`/api/scan/${mod}?source=${x}${fresh ? '&fresh=1' : ''}`, 'POST'))
       )
 
       const fulfilled = results
