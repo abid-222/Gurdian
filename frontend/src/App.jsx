@@ -13,7 +13,6 @@ import {
   Clock,
   FileBarChart,
   Terminal as TerminalIcon,
-  Crosshair,
   Settings as SettingsIcon,
   Info,
   Shield,

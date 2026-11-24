@@ -8,11 +8,8 @@ import {
   ShieldAlert,
   Save,
   Download,
-  Layers,
   Radio,
-  Clock,
-  ChevronRight,
-  Terminal
+  Clock
 } from 'lucide-react'
 import { saveBaseline, toCsv, api } from '../api'
 import { useScan } from '../hooks/useScan'
@@ -170,7 +167,6 @@ export default function Process({ src }) {
   const { data, loading, error, limited, run } = useScan('process', src)
   const [msg, setMsg]           = useState('')
   const [tree, setTree]         = useState(false)
-  const [viewMode, setViewMode] = useState('table') // 'table' | 'deck3d'
   const [bad, setBad]           = useState(false)
   const [open, setOpen]         = useState(new Set())
   const [sel, setSel]           = useState(null)
@@ -262,9 +258,6 @@ export default function Process({ src }) {
 
     return <span>{row[col] ?? '—'}</span>
   }
-
-  // 3D Process Hierarchy Deck representation
-  const topRoots = all.filter(r => r.ppid === 0 || r.ppid === '0' || !byKey.has(r.source + r.ppid)).slice(0, 16)
 
   return (
     <div>

@@ -149,30 +149,25 @@ export default function Deadlock({ src }) {
   const [edgeKind, setEdgeKind] = useState('wait')
   const [selectedRes, setSelectedRes] = useState('R2')
 
-  useEffect(() => {
-    if (customProcs.length > 0 && !customProcs.some(p => p.id === selectedProc)) setSelectedProc(customProcs[0].id)
-    if (customRess.length > 0 && !customRess.some(r => r.id === selectedRes)) setSelectedRes(customRess[0].id)
-  }, [customProcs, customRess, selectedProc, selectedRes])
+  const effectiveProc = customProcs.some(p => p.id === selectedProc) ? selectedProc : (customProcs[0]?.id || '')
+  const effectiveRes = customRess.some(r => r.id === selectedRes) ? selectedRes : (customRess[0]?.id || '')
 
   const [bankerInput, setBankerInput] = useState(SAFE_BANKER_PRESET)
   const [bankerResult, setBankerResult] = useState(null)
   const [bankerLoading, setBankerLoading] = useState(false)
 
-  const fetchStatus = useCallback(async () => {
-    try {
-      const res = await api.post(`/api/deadlock/action/status?source=${src || 'linux'}`)
-      if (res && res.mode) {
-        setStatusData(res)
-        setActiveMode(res.mode)
-      }
-    } catch {
-      // Ignored in test/offline mode
-    }
-  }, [src])
-
   useEffect(() => {
-    fetchStatus()
-  }, [fetchStatus])
+    let active = true
+    api.post(`/api/deadlock/action/status?source=${src || 'linux'}`)
+      .then(res => {
+        if (active && res && res.mode) {
+          setStatusData(res)
+          setActiveMode(res.mode)
+        }
+      })
+      .catch(() => {})
+    return () => { active = false }
+  }, [src])
 
   const evaluateCustomGraph = useCallback(async edgesList => {
     const graph = {}
@@ -266,18 +261,18 @@ export default function Deadlock({ src }) {
   }
 
   const addCustomEdge = () => {
-    if (!selectedProc || !selectedRes) return
-    const procNode = customNodes.find(n => n.id === selectedProc)
-    const resNode = customNodes.find(n => n.id === selectedRes)
+    if (!effectiveProc || !effectiveRes) return
+    const procNode = customNodes.find(n => n.id === effectiveProc)
+    const resNode = customNodes.find(n => n.id === effectiveRes)
     if (!procNode || !resNode) return
 
     if (edgeKind === 'hold') {
-      const existingHolder = customEdges.find(e => e.from === selectedRes && e.kind === 'hold')
-      if (existingHolder && existingHolder.to !== selectedProc) {
+      const existingHolder = customEdges.find(e => e.from === effectiveRes && e.kind === 'hold')
+      if (existingHolder && existingHolder.to !== effectiveProc) {
         const holderNode = customNodes.find(n => n.id === existingHolder.to)
         setCustomEdges(prev => {
-          if (prev.some(e => e.from === selectedProc && e.to === selectedRes && e.kind === 'wait')) return prev
-          return [...prev, { from: selectedProc, to: selectedRes, kind: 'wait', label: `WAITS ${resNode.short}` }]
+          if (prev.some(e => e.from === effectiveProc && e.to === effectiveRes && e.kind === 'wait')) return prev
+          return [...prev, { from: effectiveProc, to: effectiveRes, kind: 'wait', label: `WAITS ${resNode.short}` }]
         })
         setActionNote({
           tone: 'warn',
@@ -286,16 +281,16 @@ export default function Deadlock({ src }) {
         return
       }
       setCustomEdges(prev => {
-        if (prev.some(e => e.from === selectedRes && e.to === selectedProc && e.kind === 'hold')) return prev
-        return [...prev, { from: selectedRes, to: selectedProc, kind: 'hold', label: `HOLDS ${resNode.short}` }]
+        if (prev.some(e => e.from === effectiveRes && e.to === effectiveProc && e.kind === 'hold')) return prev
+        return [...prev, { from: effectiveRes, to: effectiveProc, kind: 'hold', label: `HOLDS ${resNode.short}` }]
       })
       setActionNote(null)
       return
     }
 
     setCustomEdges(prev => {
-      if (prev.some(e => e.from === selectedProc && e.to === selectedRes && e.kind === 'wait')) return prev
-      return [...prev, { from: selectedProc, to: selectedRes, kind: 'wait', label: `WAITS ${resNode.short}` }]
+      if (prev.some(e => e.from === effectiveProc && e.to === effectiveRes && e.kind === 'wait')) return prev
+      return [...prev, { from: effectiveProc, to: effectiveRes, kind: 'wait', label: `WAITS ${resNode.short}` }]
     })
     setActionNote(null)
   }
@@ -640,10 +635,10 @@ export default function Deadlock({ src }) {
             <div style={{ padding: 12, borderRadius: 8, background: 'var(--bg)', border: '1px solid var(--line)' }}>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--a)', marginBottom: 8 }}>3. Connect Hold / Wait</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 6 }}>
-                <select className="in" style={{ marginRight: 0, width: '100%' }} value={selectedProc} onChange={e => setSelectedProc(e.target.value)}>
+                <select className="in" style={{ marginRight: 0, width: '100%' }} value={effectiveProc} onChange={e => setSelectedProc(e.target.value)}>
                   {customProcs.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
                 </select>
-                <select className="in" style={{ marginRight: 0, width: '100%' }} value={selectedRes} onChange={e => setSelectedRes(e.target.value)}>
+                <select className="in" style={{ marginRight: 0, width: '100%' }} value={effectiveRes} onChange={e => setSelectedRes(e.target.value)}>
                   {customRess.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
                 </select>
               </div>
