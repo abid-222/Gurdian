@@ -21,7 +21,6 @@ import {
   Plus,
   Trash2,
   Sliders,
-  Sparkles,
   ArrowRight,
   Monitor,
   Info,
@@ -33,115 +32,49 @@ import Deadlock3D from '../components/Deadlock3D'
 
 const BASH_CODE_SNIPPETS = {
   create: `#!/usr/bin/env bash
-# Real OS Deadlock using POSIX flock causing circular wait
+# Real OS Deadlock using POSIX flock circular wait
 LOCK_DIR="/tmp/guardian_deadlock"
 RES_A="$LOCK_DIR/resource_A.lock"
 RES_B="$LOCK_DIR/resource_B.lock"
 
-# Process 1: Locks A, waits, then tries to lock B (BLOCKED)
-(
-    exec 200>"$RES_A"
-    flock -x 200
-    echo "P1: Acquired Lock A (fd:200) - Holding and waiting..."
-    sleep 1.2
-    exec 201>"$RES_B"
-    flock -x 201 # <--- KERNEL DEADLOCK: P2 holds Lock B!
-) &
-
-# Process 2: Locks B, waits, then tries to lock A (BLOCKED)
-(
-    exec 201>"$RES_B"
-    flock -x 201
-    echo "P2: Acquired Lock B (fd:201) - Holding and waiting..."
-    sleep 1.2
-    exec 200>"$RES_A"
-    flock -x 200 # <--- KERNEL DEADLOCK: P1 holds Lock A!
-) &`,
+( exec 200>"$RES_A"; flock -x 200; sleep 1.2; exec 201>"$RES_B"; flock -x 201 ) &
+( exec 201>"$RES_B"; flock -x 201; sleep 1.2; exec 200>"$RES_A"; flock -x 200 ) &`,
 
   prevent: `#!/usr/bin/env bash
-# Deadlock Prevention via Dijkstra / Havender Total Resource Hierarchy Order
-# RULE: Assign strict order F(Resource_A) = 1 < F(Resource_B) = 2
-# Processes MUST acquire locks in strictly ascending numerical order.
-
-# Process 1: Acquires A (Rank 1), then B (Rank 2)
-(
-    exec 200>"$RES_A" && flock -x 200
-    exec 201>"$RES_B" && flock -x 201
-    echo "P1: Acquired both locks in order. Critical task executing..."
-    flock -u 201 && flock -u 200
-) &
-
-# Process 2: ALSO acquires A (Rank 1) first (BREAKS CIRCULAR WAIT!)
-(
-    sleep 0.2
-    # P2 cannot lock B first; it waits for A without holding any resource.
-    exec 200>"$RES_A" && flock -x 200
-    exec 201>"$RES_B" && flock -x 201
-    echo "P2: Acquired both locks in order safely."
-    flock -u 201 && flock -u 200
-) &`,
+# Dijkstra / Havender Ordering: F(R_A) = 1 < F(R_B) = 2
+( exec 200>"$RES_A" && flock -x 200; exec 201>"$RES_B" && flock -x 201; flock -u 201 && flock -u 200 ) &
+( sleep 0.2; exec 200>"$RES_A" && flock -x 200; exec 201>"$RES_B" && flock -x 201; flock -u 201 && flock -u 200 ) &`,
 
   resolve: `#!/usr/bin/env bash
-# Deadlock Detection & Resolution: Minimum-Cost Victim Preemption
-P1_PID=$(cat /tmp/guardian_deadlock/pids.txt | head -n1)
-P2_PID=$(cat /tmp/guardian_deadlock/pids.txt | tail -n1)
-
-# Algorithm selects victim P2 to minimize rollback overhead
-echo "Selecting victim Process P2 ($P2_PID)..."
-kill -15 "$P2_PID" 2>/dev/null || kill -9 "$P2_PID"
-
-# Releasing Lock B allows survivor P1 to acquire B, complete, and exit
-echo "Resource B preempted. Process P1 unblocked and completes critical section."`,
+# Victim Preemption Recovery
+P2_PID=$(tail -n1 /tmp/guardian_deadlock/pids.txt)
+kill -15 "$P2_PID" 2>/dev/null || kill -9 "$P2_PID"`,
 }
 
 const SAFE_BANKER_PRESET = {
   available: [3, 3, 2],
-  maximum: [
-    [7, 5, 3],
-    [3, 2, 2],
-    [9, 0, 2],
-    [2, 2, 2],
-    [4, 3, 3],
-  ],
-  allocation: [
-    [0, 1, 0],
-    [2, 0, 0],
-    [3, 0, 2],
-    [2, 1, 1],
-    [0, 0, 2],
-  ],
+  maximum: [[7, 5, 3], [3, 2, 2], [9, 0, 2], [2, 2, 2], [4, 3, 3]],
+  allocation: [[0, 1, 0], [2, 0, 0], [3, 0, 2], [2, 1, 1], [0, 0, 2]],
 }
 
 const UNSAFE_BANKER_PRESET = {
   available: [0, 0, 1],
-  maximum: [
-    [7, 5, 3],
-    [3, 2, 2],
-    [9, 0, 2],
-    [2, 2, 2],
-    [4, 3, 3],
-  ],
-  allocation: [
-    [0, 1, 0],
-    [2, 0, 0],
-    [3, 0, 2],
-    [2, 1, 1],
-    [0, 0, 2],
-  ],
+  maximum: [[7, 5, 3], [3, 2, 2], [9, 0, 2], [2, 2, 2], [4, 3, 3]],
+  allocation: [[0, 1, 0], [2, 0, 0], [3, 0, 2], [2, 1, 1], [0, 0, 2]],
 }
 
 const REAL_PC_RESOURCE_TEMPLATES = [
-  { name: 'SQLite DB Lock', sub: 'guardian.db · WAL' },
-  { name: 'Port 8000 Socket', sub: 'TCP :8000 · FastAPI' },
-  { name: 'GPU VRAM Mutex', sub: 'CUDA/DX12 Handle' },
-  { name: 'Config File Lock', sub: 'watchlist.conf · flock' },
+  { name: 'SQLite DB Lock', sub: 'guardian.db' },
+  { name: 'Port 8000', sub: 'TCP :8000' },
+  { name: 'GPU Mutex', sub: 'VRAM Handle' },
+  { name: 'Config Lock', sub: 'watchlist.conf' },
 ]
 
 const INITIAL_CUSTOM_NODES = [
-  { id: 'P1', short: 'P1', type: 'process', label: 'Process P1', sub: 'User Task #1' },
-  { id: 'P2', short: 'P2', type: 'process', label: 'Process P2', sub: 'User Task #2' },
-  { id: 'R1', short: 'R_1', type: 'resource', label: 'SQLite DB Lock', sub: 'Rank #1 · Exclusive', rank: 1 },
-  { id: 'R2', short: 'R_2', type: 'resource', label: 'Port 8000 Socket', sub: 'Rank #2 · Exclusive', rank: 2 },
+  { id: 'P1', short: 'P1', type: 'process', label: 'Process P1', sub: 'Task #1' },
+  { id: 'P2', short: 'P2', type: 'process', label: 'Process P2', sub: 'Task #2' },
+  { id: 'R1', short: 'R_1', type: 'resource', label: 'SQLite DB Lock', sub: 'Rank #1', rank: 1 },
+  { id: 'R2', short: 'R_2', type: 'resource', label: 'Port 8000', sub: 'Rank #2', rank: 2 },
 ]
 
 const INITIAL_CUSTOM_EDGES = [
@@ -175,63 +108,52 @@ function localDetectCycle(graph) {
   return null
 }
 
-const glassCardStyle = {
-  background: 'rgba(20, 22, 30, 0.66)',
-  backdropFilter: 'blur(18px)',
-  WebkitBackdropFilter: 'blur(18px)',
-  border: '1px solid rgba(255, 255, 255, 0.11)',
-  borderRadius: 14,
-  padding: '16px 20px',
-  boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 12px 32px rgba(0, 0, 0, 0.38)',
+// Unslop quiet-chrome glass surface
+const panelStyle = {
+  background: 'rgba(25, 25, 27, 0.78)',
+  backdropFilter: 'blur(12px)',
+  WebkitBackdropFilter: 'blur(12px)',
+  border: '1px solid var(--line)',
+  borderRadius: 12,
+  padding: '14px 16px',
 }
 
 export default function Deadlock({ src }) {
-  const [labMode, setLabMode] = useState('kernel') // 'kernel' | 'custom'
-  const [activeMode, setActiveMode] = useState('idle') // 'idle' | 'deadlock' | 'prevented' | 'resolved'
+  const [labMode, setLabMode] = useState('kernel')
+  const [activeMode, setActiveMode] = useState('idle')
   const [statusData, setStatusData] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState('simulator') // 'simulator' | 'code' | 'theory'
+  const [activeTab, setActiveTab] = useState('simulator')
   const [codeType, setCodeType] = useState('create')
   const [copied, setCopied] = useState(false)
-  const [actionNote, setActionNote] = useState(null) // { tone: 'info'|'warn'|'ok'|'err', text: string }
+  const [actionNote, setActionNote] = useState(null)
 
-  // Live PC Processes for Custom Sandbox
   const { data: procScan, loading: procLoading, run: refreshProcs } = useScan('process', src || 'windows', true)
   const liveProcesses = useMemo(() => {
     const rows = procScan?.rows || []
-    return [...rows]
-      .sort((a, b) => (Number(b.cpu) || 0) - (Number(a.cpu) || 0))
-      .slice(0, 12)
+    return [...rows].sort((a, b) => (Number(b.cpu) || 0) - (Number(a.cpu) || 0)).slice(0, 10)
   }, [procScan])
 
-  // Custom Sandbox State
   const [customNodes, setCustomNodes] = useState(INITIAL_CUSTOM_NODES)
   const [customEdges, setCustomEdges] = useState(INITIAL_CUSTOM_EDGES)
   const [customCycle, setCustomCycle] = useState(null)
   const [customState, setCustomState] = useState('idle')
   const skipNextEvalRef = useRef(false)
 
-  // Clean bipartite selectors (Process <-> Resource)
   const customProcs = useMemo(() => customNodes.filter(n => n.type === 'process'), [customNodes])
   const customRess = useMemo(() => customNodes.filter(n => n.type === 'resource'), [customNodes])
 
   const [newProcName, setNewProcName] = useState('')
   const [newResName, setNewResName] = useState('')
   const [selectedProc, setSelectedProc] = useState('P1')
-  const [edgeKind, setEdgeKind] = useState('wait') // 'wait' | 'hold'
+  const [edgeKind, setEdgeKind] = useState('wait')
   const [selectedRes, setSelectedRes] = useState('R2')
 
-  // Keep dropdown selections valid when nodes are added/removed
   useEffect(() => {
-    if (customProcs.length > 0 && !customProcs.some(p => p.id === selectedProc)) {
-      setSelectedProc(customProcs[0].id)
-    }
-    if (customRess.length > 0 && !customRess.some(r => r.id === selectedRes)) {
-      setSelectedRes(customRess[0].id)
-    }
+    if (customProcs.length > 0 && !customProcs.some(p => p.id === selectedProc)) setSelectedProc(customProcs[0].id)
+    if (customRess.length > 0 && !customRess.some(r => r.id === selectedRes)) setSelectedRes(customRess[0].id)
   }, [customProcs, customRess, selectedProc, selectedRes])
 
-  // Banker's Algorithm State
   const [bankerInput, setBankerInput] = useState(SAFE_BANKER_PRESET)
   const [bankerResult, setBankerResult] = useState(null)
   const [bankerLoading, setBankerLoading] = useState(false)
@@ -244,7 +166,7 @@ export default function Deadlock({ src }) {
         setActiveMode(res.mode)
       }
     } catch {
-      // Ignored in offline/test mode
+      // Ignored in test/offline mode
     }
   }, [src])
 
@@ -252,7 +174,6 @@ export default function Deadlock({ src }) {
     fetchStatus()
   }, [fetchStatus])
 
-  // Evaluate Custom Graph via Backend /api/deadlock/wfg
   const evaluateCustomGraph = useCallback(async edgesList => {
     const graph = {}
     edgesList.forEach(e => {
@@ -271,13 +192,9 @@ export default function Deadlock({ src }) {
     }
 
     setCustomCycle(foundCycle)
-    if (foundCycle && foundCycle.length > 0) {
-      setCustomState('deadlock')
-    } else if (edgesList.some(e => e.kind === 'order')) {
-      setCustomState('prevented')
-    } else {
-      setCustomState('idle')
-    }
+    if (foundCycle && foundCycle.length > 0) setCustomState('deadlock')
+    else if (edgesList.some(e => e.kind === 'order')) setCustomState('prevented')
+    else setCustomState('idle')
   }, [])
 
   useEffect(() => {
@@ -295,46 +212,41 @@ export default function Deadlock({ src }) {
     try {
       const res = await api.post(`/api/deadlock/action/${action}?source=${src || 'linux'}`)
       if (res?.error) {
-        setActionNote({ tone: 'err', text: `OS Script Error: ${res.error}` })
+        setActionNote({ tone: 'err', text: `Error: ${res.error}` })
         return
       }
       if (res) {
         setStatusData(res)
         if (action === 'create') {
           setActiveMode('deadlock')
-          setActionNote({ tone: 'err', text: 'Real OS Deadlock triggered: P1 and P2 are mutually blocked on exclusive locks.' })
+          setActionNote({ tone: 'err', text: 'OS Deadlock active (P1 ⇄ P2).' })
         } else if (action === 'prevent') {
           setActiveMode('prevented')
-          setActionNote({ tone: 'ok', text: 'Dijkstra Resource Hierarchy enforced: both processes acquired locks in ascending order.' })
+          setActionNote({ tone: 'ok', text: 'Hierarchy order enforced (no cycle).' })
         } else if (action === 'resolve') {
           setActiveMode('resolved')
-          setActionNote({ tone: 'warn', text: 'Victim process preempted and terminated — survivor P1 unblocked and finished.' })
+          setActionNote({ tone: 'warn', text: 'Victim preempted; survivor unblocked.' })
         } else if (action === 'cleanup') {
           setActiveMode('idle')
           setStatusData(null)
-          setActionNote({ tone: 'info', text: 'OS Lab locks and processes cleaned up.' })
+          setActionNote(null)
         }
       }
     } catch (err) {
-      setActionNote({ tone: 'err', text: `Action failed: ${err?.message || 'Backend unreachable'}` })
+      setActionNote({ tone: 'err', text: err?.message || 'Backend error' })
     } finally {
       setLoading(false)
     }
   }
 
-  // Custom Sandbox Handlers
   const addCustomProcess = (labelOverride, subOverride) => {
     const name = (labelOverride || newProcName).trim()
     if (!name) return
     const nextIdx = customProcs.length + 1
     const id = `P_${Date.now().toString().slice(-4)}_${nextIdx}`
     const short = name.replace(/\.exe$/i, '').slice(0, 7)
-    setCustomNodes(prev => [
-      ...prev,
-      { id, short, type: 'process', label: name, sub: subOverride || 'Custom Process' },
-    ])
+    setCustomNodes(prev => [...prev, { id, short, type: 'process', label: name, sub: subOverride || 'Process' }])
     setSelectedProc(id)
-    setActionNote({ tone: 'info', text: `Added Process "${name}" to the graph.` })
     if (!labelOverride) setNewProcName('')
   }
 
@@ -343,20 +255,14 @@ export default function Deadlock({ src }) {
     if (!name) return
     const nextRank = customRess.length + 1
     const id = `R_${Date.now().toString().slice(-4)}_${nextRank}`
-    setCustomNodes(prev => [
-      ...prev,
-      { id, short: `R_${nextRank}`, type: 'resource', label: name, sub: subOverride || `Rank #${nextRank} · Lock`, rank: nextRank },
-    ])
+    setCustomNodes(prev => [...prev, { id, short: `R_${nextRank}`, type: 'resource', label: name, sub: subOverride || `Rank #${nextRank}`, rank: nextRank }])
     setSelectedRes(id)
-    setActionNote({ tone: 'info', text: `Added Resource "${name}" (Rank #${nextRank}).` })
     if (!labelOverride) setNewResName('')
   }
 
   const removeCustomNode = nodeId => {
-    const target = customNodes.find(n => n.id === nodeId)
     setCustomNodes(prev => prev.filter(n => n.id !== nodeId))
     setCustomEdges(prev => prev.filter(e => e.from !== nodeId && e.to !== nodeId))
-    if (target) setActionNote({ tone: 'info', text: `Removed "${target.label}" and its connected edges.` })
   }
 
   const addCustomEdge = () => {
@@ -365,19 +271,17 @@ export default function Deadlock({ src }) {
     const resNode = customNodes.find(n => n.id === selectedRes)
     if (!procNode || !resNode) return
 
-    // Enforce OS Mutual Exclusion: an exclusive resource cannot be HELD by two processes simultaneously
     if (edgeKind === 'hold') {
       const existingHolder = customEdges.find(e => e.from === selectedRes && e.kind === 'hold')
       if (existingHolder && existingHolder.to !== selectedProc) {
         const holderNode = customNodes.find(n => n.id === existingHolder.to)
-        // Automatically convert to a WAIT edge because the lock is already taken!
         setCustomEdges(prev => {
           if (prev.some(e => e.from === selectedProc && e.to === selectedRes && e.kind === 'wait')) return prev
           return [...prev, { from: selectedProc, to: selectedRes, kind: 'wait', label: `WAITS ${resNode.short}` }]
         })
         setActionNote({
           tone: 'warn',
-          text: `Mutual Exclusion: "${resNode.label}" is already held by "${holderNode?.label || existingHolder.to}". "${procNode.label}" must WAIT for it!`,
+          text: `${resNode.label} held by ${holderNode?.short || existingHolder.to} → ${procNode.short} set to WAIT.`,
         })
         return
       }
@@ -385,69 +289,49 @@ export default function Deadlock({ src }) {
         if (prev.some(e => e.from === selectedRes && e.to === selectedProc && e.kind === 'hold')) return prev
         return [...prev, { from: selectedRes, to: selectedProc, kind: 'hold', label: `HOLDS ${resNode.short}` }]
       })
-      setActionNote({ tone: 'ok', text: `"${procNode.label}" acquired lock "${resNode.label}".` })
+      setActionNote(null)
       return
     }
 
-    // Wait edge: Process -> Resource
     setCustomEdges(prev => {
       if (prev.some(e => e.from === selectedProc && e.to === selectedRes && e.kind === 'wait')) return prev
       return [...prev, { from: selectedProc, to: selectedRes, kind: 'wait', label: `WAITS ${resNode.short}` }]
     })
-    setActionNote({ tone: 'warn', text: `"${procNode.label}" is now waiting for "${resNode.label}".` })
+    setActionNote(null)
   }
 
-  const removeCustomEdge = idx => {
-    setCustomEdges(prev => prev.filter((_, i) => i !== idx))
-  }
+  const removeCustomEdge = idx => setCustomEdges(prev => prev.filter((_, i) => i !== idx))
 
   const triggerCustomRuleBreak = () => {
     if (customProcs.length < 2 || customRess.length < 2) {
-      setActionNote({ tone: 'err', text: 'Add at least 2 Processes and 2 Resources to create a Circular Wait deadlock.' })
+      setActionNote({ tone: 'err', text: 'Need 2+ processes and 2+ locks.' })
       return
     }
-    const p1 = customProcs[0]
-    const p2 = customProcs[1]
-    const r1 = customRess[0]
-    const r2 = customRess[1]
+    const [p1, p2] = customProcs
+    const [r1, r2] = customRess
     setCustomEdges([
       { from: r1.id, to: p1.id, kind: 'hold', label: `HOLDS ${r1.short}` },
       { from: p1.id, to: r2.id, kind: 'wait', label: `WAITS ${r2.short}` },
       { from: r2.id, to: p2.id, kind: 'hold', label: `HOLDS ${r2.short}` },
       { from: p2.id, to: r1.id, kind: 'wait', label: `WAITS ${r1.short}` },
     ])
-    setActionNote({
-      tone: 'err',
-      text: `Rule Broken: ${p1.label} holds ${r1.label} & waits for ${r2.label}, while ${p2.label} holds ${r2.label} & waits for ${r1.label} → DEADLOCK!`,
-    })
+    setActionNote({ tone: 'err', text: `Cycle created: ${p1.short} ⇄ ${p2.short}` })
   }
 
   const applyCustomPrevention = () => {
     if (customProcs.length === 0 || customRess.length === 0) return
     const p1 = customProcs[0]
-    const ordered = []
-    customRess.forEach((r, idx) => {
-      ordered.push({
-        from: r.id,
-        to: p1.id,
-        kind: idx === 0 ? 'hold' : 'order',
-        label: `Rank #${idx + 1} → ${p1.short}`,
-      })
-    })
+    const ordered = customRess.map((r, idx) => ({
+      from: r.id,
+      to: p1.id,
+      kind: idx === 0 ? 'hold' : 'order',
+      label: `#${idx + 1} → ${p1.short}`,
+    }))
     if (customProcs.length >= 2) {
-      // P2 must request Rank #1 first without holding higher-rank locks!
-      ordered.push({
-        from: customProcs[1].id,
-        to: customRess[0].id,
-        kind: 'order',
-        label: `Waits Rank #1 (Safe)`,
-      })
+      ordered.push({ from: customProcs[1].id, to: customRess[0].id, kind: 'order', label: 'Ordered Safe' })
     }
     setCustomEdges(ordered)
-    setActionNote({
-      tone: 'ok',
-      text: 'Dijkstra Ordering Applied: All processes request locks in ascending rank (#1 → #2), making Circular Wait impossible.',
-    })
+    setActionNote({ tone: 'ok', text: 'Ascending rank order enforced.' })
   }
 
   const preemptCustomVictim = () => {
@@ -458,10 +342,7 @@ export default function Deadlock({ src }) {
     setCustomEdges(prev => prev.filter(e => e.from !== victimProc.id && e.to !== victimProc.id))
     setCustomCycle(null)
     setCustomState('resolved')
-    setActionNote({
-      tone: 'warn',
-      text: `Victim "${victimProc.label}" preempted! Its held locks were released so remaining processes can finish.`,
-    })
+    setActionNote({ tone: 'warn', text: `Victim "${victimProc.short}" preempted.` })
   }
 
   const resetCustomSandbox = () => {
@@ -469,7 +350,7 @@ export default function Deadlock({ src }) {
     setCustomEdges(INITIAL_CUSTOM_EDGES)
     setCustomCycle(null)
     setCustomState('idle')
-    setActionNote({ tone: 'info', text: 'Custom Sandbox reset to default processes and locks.' })
+    setActionNote(null)
   }
 
   const solveBanker = async () => {
@@ -478,7 +359,7 @@ export default function Deadlock({ src }) {
       const res = await api.post('/api/deadlock/banker', bankerInput)
       setBankerResult(res)
     } catch (err) {
-      setActionNote({ tone: 'err', text: `Banker's calculation failed: ${err?.message || 'error'}` })
+      setActionNote({ tone: 'err', text: err?.message || 'Calculation failed' })
     } finally {
       setBankerLoading(false)
     }
@@ -499,7 +380,6 @@ export default function Deadlock({ src }) {
   const isPrevented = effectiveMode === 'prevented'
   const isResolved = effectiveMode === 'resolved'
 
-  // Accurate Coffman Hold & Wait check in Custom Mode
   const customHoldAndWait = useMemo(() => {
     if (labMode !== 'custom') return isDeadlock
     const holdingProcs = new Set(customEdges.filter(e => e.kind === 'hold').map(e => e.to))
@@ -510,419 +390,271 @@ export default function Deadlock({ src }) {
   const hasMutualExclusion = labMode === 'custom' ? customRess.length > 0 && customEdges.some(e => e.kind === 'hold') : true
 
   const statusBadge = isDeadlock
-    ? { v: 'DEADLOCK ACTIVE', tone: 'r' }
+    ? { v: 'DEADLOCK', tone: 'r' }
     : isPrevented
-    ? { v: 'PREVENTION VERIFIED', tone: 'g' }
+    ? { v: 'PREVENTED', tone: 'g' }
     : isResolved
     ? { v: 'RECOVERED', tone: 'a' }
-    : { v: 'SYSTEM IDLE', tone: 'c' }
+    : { v: 'IDLE', tone: 'c' }
 
-  const accentBorderColor = isDeadlock
-    ? 'var(--r)'
-    : isPrevented
-    ? 'var(--g)'
-    : isResolved
-    ? 'var(--a)'
-    : 'var(--c)'
+  const accentBorderColor = isDeadlock ? 'var(--r)' : isPrevented ? 'var(--g)' : isResolved ? 'var(--a)' : 'var(--c)'
 
   const needMatrix = bankerInput.maximum.map((row, i) =>
     row.map((val, j) => Math.max(0, val - (bankerInput.allocation[i]?.[j] || 0)))
   )
 
   return (
-    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 18 }}>
-      {/* Ambient Glassmorphic Gradient Orbs */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: 'fixed',
-          top: 70,
-          right: 40,
-          width: 340,
-          height: 340,
-          borderRadius: '50%',
-          background: isDeadlock
-            ? 'radial-gradient(circle, rgba(244,63,94,0.16) 0%, transparent 70%)'
-            : 'radial-gradient(circle, rgba(16,185,129,0.14) 0%, transparent 70%)',
-          pointerEvents: 'none',
-          zIndex: 0,
-          filter: 'blur(30px)',
-        }}
-      />
-
-      {/* ── Top Glassmorphic Hero Header ── */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* ── Compact Single-Row Header & Side-by-Side Controls ── */}
       <div
         style={{
-          ...glassCardStyle,
-          position: 'relative',
-          zIndex: 1,
-          borderLeft: `4px solid ${accentBorderColor}`,
-          background: 'linear-gradient(135deg, rgba(22, 25, 36, 0.8) 0%, rgba(16, 185, 129, 0.06) 100%)',
+          ...panelStyle,
+          borderLeft: `3px solid ${accentBorderColor}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 12,
         }}
       >
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  background: 'rgba(56, 189, 248, 0.16)',
-                  border: '1px solid rgba(56, 189, 248, 0.35)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#38bdf8',
-                  boxShadow: '0 0 16px rgba(56, 189, 248, 0.2)',
-                }}
-              >
-                <GitBranch size={18} />
-              </div>
-              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--fg)', letterSpacing: '-0.02em' }}>
-                Deadlock Engineering Lab
-              </h1>
-              <Badge v={statusBadge.v} tone={statusBadge.tone} />
-            </div>
-            <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
-              Real OS lock simulation, Live PC Custom Rule-Breaker Sandbox, Dijkstra&apos;s Ordering, and Banker&apos;s Algorithm.
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
-            {/* Mode Switcher */}
-            <div
-              style={{
-                display: 'inline-flex',
-                padding: 4,
-                borderRadius: 10,
-                background: 'rgba(10, 12, 18, 0.65)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                gap: 4,
-              }}
-            >
-              <button
-                onClick={() => {
-                  setLabMode('kernel')
-                  setActionNote(null)
-                }}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '5px 12px',
-                  borderRadius: 7,
-                  border: 'none',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  background: labMode === 'kernel' ? 'rgba(16, 185, 129, 0.22)' : 'transparent',
-                  color: labMode === 'kernel' ? '#34d399' : 'var(--dim)',
-                }}
-              >
-                <Terminal size={13} /> OS Kernel Lab
-              </button>
-              <button
-                onClick={() => {
-                  setLabMode('custom')
-                  setActionNote(null)
-                }}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '5px 12px',
-                  borderRadius: 7,
-                  border: 'none',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  background: labMode === 'custom' ? 'rgba(167, 139, 250, 0.24)' : 'transparent',
-                  color: labMode === 'custom' ? '#c4b5fd' : 'var(--dim)',
-                }}
-              >
-                <Sliders size={13} /> Custom &amp; Live PC Sandbox
-              </button>
-            </div>
-
-            {labMode === 'kernel' ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <Btn
-                  onClick={() => runAction('create')}
-                  disabled={loading || isDeadlock}
-                  style={{
-                    background: 'rgba(244, 63, 94, 0.16)',
-                    color: '#fb7185',
-                    border: '1px solid rgba(244, 63, 94, 0.45)',
-                    fontWeight: 600,
-                  }}
-                >
-                  <Play size={14} /> Trigger OS Deadlock (flock)
-                </Btn>
-                <Btn
-                  onClick={() => runAction('prevent')}
-                  disabled={loading}
-                  style={{
-                    background: 'rgba(16, 185, 129, 0.16)',
-                    color: '#34d399',
-                    border: '1px solid rgba(16, 185, 129, 0.45)',
-                    fontWeight: 600,
-                  }}
-                >
-                  <ShieldCheck size={14} /> Run Prevention (Ordering)
-                </Btn>
-                <Btn
-                  onClick={() => runAction('resolve')}
-                  disabled={loading || !isDeadlock}
-                  style={{
-                    background: 'rgba(245, 158, 11, 0.16)',
-                    color: '#fbbf24',
-                    border: '1px solid rgba(245, 158, 11, 0.45)',
-                    fontWeight: 600,
-                  }}
-                >
-                  <Zap size={14} /> Break Deadlock (Preempt Victim)
-                </Btn>
-                <Btn onClick={() => runAction('cleanup')} disabled={loading} title="Reset Lab Environment">
-                  <RotateCcw size={14} /> Reset
-                </Btn>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <Btn
-                  onClick={triggerCustomRuleBreak}
-                  style={{
-                    background: 'rgba(244, 63, 94, 0.16)',
-                    color: '#fb7185',
-                    border: '1px solid rgba(244, 63, 94, 0.45)',
-                    fontWeight: 600,
-                  }}
-                >
-                  <AlertTriangle size={14} /> Break Rule (Create Cycle)
-                </Btn>
-                <Btn
-                  onClick={applyCustomPrevention}
-                  style={{
-                    background: 'rgba(16, 185, 129, 0.16)',
-                    color: '#34d399',
-                    border: '1px solid rgba(16, 185, 129, 0.45)',
-                    fontWeight: 600,
-                  }}
-                >
-                  <ShieldCheck size={14} /> Apply Dijkstra Ordering
-                </Btn>
-                <Btn
-                  onClick={preemptCustomVictim}
-                  disabled={!isDeadlock}
-                  style={{
-                    background: 'rgba(245, 158, 11, 0.16)',
-                    color: '#fbbf24',
-                    border: '1px solid rgba(245, 158, 11, 0.45)',
-                    fontWeight: 600,
-                  }}
-                >
-                  <Zap size={14} /> Preempt Victim
-                </Btn>
-                <Btn onClick={resetCustomSandbox} title="Reset Custom Graph">
-                  <RotateCcw size={14} /> Reset
-                </Btn>
-              </div>
-            )}
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <GitBranch size={18} color="var(--accent)" />
+          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--fg)', letterSpacing: '-0.01em' }}>
+            Deadlock Engineering Lab
+          </h1>
+          <Badge v={statusBadge.v} tone={statusBadge.tone} />
         </div>
 
-        {/* Live Action Feedback Strip */}
-        {actionNote && (
+        {/* All Mode + Action Buttons neatly side-by-side */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <div
             style={{
-              marginTop: 12,
-              padding: '8px 12px',
-              borderRadius: 8,
-              fontSize: 12,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              background:
-                actionNote.tone === 'err'
-                  ? 'rgba(244, 63, 94, 0.14)'
-                  : actionNote.tone === 'ok'
-                  ? 'rgba(16, 185, 129, 0.14)'
-                  : actionNote.tone === 'warn'
-                  ? 'rgba(245, 158, 11, 0.14)'
-                  : 'rgba(56, 189, 248, 0.14)',
-              border: `1px solid ${
-                actionNote.tone === 'err'
-                  ? 'rgba(244, 63, 94, 0.35)'
-                  : actionNote.tone === 'ok'
-                  ? 'rgba(16, 185, 129, 0.35)'
-                  : actionNote.tone === 'warn'
-                  ? 'rgba(245, 158, 11, 0.35)'
-                  : 'rgba(56, 189, 248, 0.35)'
-              }`,
-              color: 'var(--fg)',
+              display: 'inline-flex',
+              padding: 3,
+              borderRadius: 7,
+              background: 'var(--bg)',
+              border: '1px solid var(--line)',
+              gap: 2,
             }}
           >
-            <Info size={14} />
-            <span>{actionNote.text}</span>
+            <button
+              onClick={() => { setLabMode('kernel'); setActionNote(null) }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '4px 10px',
+                borderRadius: 5,
+                border: 'none',
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: 'pointer',
+                background: labMode === 'kernel' ? 'rgba(16, 185, 129, 0.18)' : 'transparent',
+                color: labMode === 'kernel' ? 'var(--g)' : 'var(--dim)',
+              }}
+            >
+              <Terminal size={12} /> OS Kernel
+            </button>
+            <button
+              onClick={() => { setLabMode('custom'); setActionNote(null) }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '4px 10px',
+                borderRadius: 5,
+                border: 'none',
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: 'pointer',
+                background: labMode === 'custom' ? 'rgba(167, 139, 250, 0.2)' : 'transparent',
+                color: labMode === 'custom' ? 'var(--p)' : 'var(--dim)',
+              }}
+            >
+              <Sliders size={12} /> Custom PC
+            </button>
           </div>
-        )}
+
+          {labMode === 'kernel' ? (
+            <>
+              <Btn
+                onClick={() => runAction('create')}
+                disabled={loading || isDeadlock}
+                style={{ background: 'rgba(229, 72, 77, 0.14)', color: 'var(--r)', border: '1px solid rgba(229, 72, 77, 0.35)' }}
+              >
+                <Play size={13} /> Trigger OS Deadlock
+              </Btn>
+              <Btn
+                onClick={() => runAction('prevent')}
+                disabled={loading}
+                style={{ background: 'rgba(76, 195, 138, 0.14)', color: 'var(--g)', border: '1px solid rgba(76, 195, 138, 0.35)' }}
+              >
+                <ShieldCheck size={13} /> Prevent
+              </Btn>
+              <Btn
+                onClick={() => runAction('resolve')}
+                disabled={loading || !isDeadlock}
+                style={{ background: 'rgba(245, 158, 11, 0.14)', color: 'var(--a)', border: '1px solid rgba(245, 158, 11, 0.35)' }}
+              >
+                <Zap size={13} /> Preempt
+              </Btn>
+              <Btn onClick={() => runAction('cleanup')} disabled={loading} title="Reset">
+                <RotateCcw size={13} />
+              </Btn>
+            </>
+          ) : (
+            <>
+              <Btn
+                onClick={triggerCustomRuleBreak}
+                style={{ background: 'rgba(229, 72, 77, 0.14)', color: 'var(--r)', border: '1px solid rgba(229, 72, 77, 0.35)' }}
+              >
+                <AlertTriangle size={13} /> Break Rule
+              </Btn>
+              <Btn
+                onClick={applyCustomPrevention}
+                style={{ background: 'rgba(76, 195, 138, 0.14)', color: 'var(--g)', border: '1px solid rgba(76, 195, 138, 0.35)' }}
+              >
+                <ShieldCheck size={13} /> Order Rules
+              </Btn>
+              <Btn
+                onClick={preemptCustomVictim}
+                disabled={!isDeadlock}
+                style={{ background: 'rgba(245, 158, 11, 0.14)', color: 'var(--a)', border: '1px solid rgba(245, 158, 11, 0.35)' }}
+              >
+                <Zap size={13} /> Preempt
+              </Btn>
+              <Btn onClick={resetCustomSandbox} title="Reset">
+                <RotateCcw size={13} />
+              </Btn>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* ── Custom & Real-PC Deadlock Builder Panel (Clean 3-Step Format) ── */}
-      {labMode === 'custom' && (
+      {/* Compact Action Note (only when triggered) */}
+      {actionNote && (
         <div
           style={{
-            ...glassCardStyle,
-            position: 'relative',
-            zIndex: 1,
-            borderColor: 'rgba(167, 139, 250, 0.32)',
-            background: 'linear-gradient(135deg, rgba(24, 24, 38, 0.74) 0%, rgba(56, 189, 248, 0.05) 100%)',
+            padding: '8px 12px',
+            borderRadius: 8,
+            fontSize: 12,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            background: 'var(--panel)',
+            border: `1px solid ${actionNote.tone === 'err' ? 'var(--r)' : actionNote.tone === 'ok' ? 'var(--g)' : actionNote.tone === 'warn' ? 'var(--a)' : 'var(--c)'}`,
+            color: 'var(--fg)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+          <Info size={14} />
+          <span>{actionNote.text}</span>
+        </div>
+      )}
+
+      {/* ── Compact 3-Step Builder (Custom PC Mode) ── */}
+      {labMode === 'custom' && (
+        <div style={panelStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Monitor size={16} color="#c4b5fd" />
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg)' }}>
-                3-Step Live PC &amp; Custom Deadlock Builder
-              </span>
-              <Badge v="REAL PC DATA" tone="p" />
+              <Monitor size={15} color="var(--p)" />
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg)' }}>Custom PC Builder</span>
+              <Badge v="LIVE PC" tone="p" />
             </div>
             <Btn variant="secondary" onClick={refreshProcs} loading={procLoading}>
-              <RefreshCw size={12} /> Refresh Live PC Processes
+              <RefreshCw size={12} /> Refresh PC
             </Btn>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(265px, 1fr))', gap: 14 }}>
-            {/* Step 1: Processes */}
-            <div style={{ padding: 14, borderRadius: 11, background: 'rgba(10, 12, 18, 0.58)', border: '1px solid rgba(56, 189, 248, 0.22)' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8', marginBottom: 8 }}>
-                STEP 1 · PICK OR ADD PROCESSES
-              </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12 }}>
+            {/* Step 1 */}
+            <div style={{ padding: 12, borderRadius: 8, background: 'var(--bg)', border: '1px solid var(--line)' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--c)', marginBottom: 8 }}>1. Processes</div>
               <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
                 <input
                   className="in"
                   style={{ flex: 1, marginRight: 0 }}
-                  placeholder="Custom name (e.g. chrome.exe)"
+                  placeholder="e.g. chrome.exe"
                   value={newProcName}
                   onChange={e => setNewProcName(e.target.value)}
                 />
-                <Btn onClick={() => addCustomProcess()}>
-                  <Plus size={13} /> Add
-                </Btn>
+                <Btn onClick={() => addCustomProcess()}><Plus size={12} /></Btn>
               </div>
-              <div style={{ fontSize: 10, color: 'var(--dim)', marginBottom: 6 }}>
-                Live running PC processes (click to add):
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, maxHeight: 88, overflowY: 'auto' }}>
-                {liveProcesses.length === 0 ? (
-                  <span style={{ fontSize: 11, color: 'var(--dim)' }}>No live scan rows yet</span>
-                ) : (
-                  liveProcesses.map((p, idx) => (
-                    <button
-                      key={`${p.pid}-${idx}`}
-                      onClick={() => addCustomProcess(p.name, `PID ${p.pid} · CPU ${p.cpu ?? 0}%`)}
-                      className="mono"
-                      style={{
-                        padding: '3px 7px',
-                        borderRadius: 6,
-                        fontSize: 10,
-                        background: 'rgba(56, 189, 248, 0.12)',
-                        border: '1px solid rgba(56, 189, 248, 0.3)',
-                        color: '#7dd3fc',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      + {p.name} ({p.pid})
-                    </button>
-                  ))
-                )}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 72, overflowY: 'auto' }}>
+                {liveProcesses.map((p, idx) => (
+                  <button
+                    key={`${p.pid}-${idx}`}
+                    onClick={() => addCustomProcess(p.name, `PID ${p.pid}`)}
+                    className="mono"
+                    style={{
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      fontSize: 10,
+                      background: 'rgba(56, 189, 248, 0.1)',
+                      border: '1px solid rgba(56, 189, 248, 0.25)',
+                      color: 'var(--c)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    +{p.name}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Step 2: Resources */}
-            <div style={{ padding: 14, borderRadius: 11, background: 'rgba(10, 12, 18, 0.58)', border: '1px solid rgba(167, 139, 250, 0.22)' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#a78bfa', marginBottom: 8 }}>
-                STEP 2 · ADD RESOURCE LOCKS (RANKED)
-              </div>
+            {/* Step 2 */}
+            <div style={{ padding: 12, borderRadius: 8, background: 'var(--bg)', border: '1px solid var(--line)' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--p)', marginBottom: 8 }}>2. Resource Locks</div>
               <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
                 <input
                   className="in"
                   style={{ flex: 1, marginRight: 0 }}
-                  placeholder="Custom lock (e.g. File Mutex)"
+                  placeholder="e.g. File Mutex"
                   value={newResName}
                   onChange={e => setNewResName(e.target.value)}
                 />
-                <Btn onClick={() => addCustomResource()}>
-                  <Plus size={13} /> Add
-                </Btn>
+                <Btn onClick={() => addCustomResource()}><Plus size={12} /></Btn>
               </div>
-              <div style={{ fontSize: 10, color: 'var(--dim)', marginBottom: 6 }}>
-                Common PC system locks (click to add):
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                 {REAL_PC_RESOURCE_TEMPLATES.map(r => (
                   <button
                     key={r.name}
                     onClick={() => addCustomResource(r.name, r.sub)}
                     className="mono"
                     style={{
-                      padding: '3px 7px',
-                      borderRadius: 6,
+                      padding: '2px 6px',
+                      borderRadius: 4,
                       fontSize: 10,
-                      background: 'rgba(167, 139, 250, 0.12)',
-                      border: '1px solid rgba(167, 139, 250, 0.3)',
-                      color: '#ddd6fe',
+                      background: 'rgba(167, 139, 250, 0.1)',
+                      border: '1px solid rgba(167, 139, 250, 0.25)',
+                      color: 'var(--p)',
                       cursor: 'pointer',
                     }}
                   >
-                    + {r.name}
+                    +{r.name}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Step 3: Clean Bipartite Rule Connector */}
-            <div style={{ padding: 14, borderRadius: 11, background: 'rgba(10, 12, 18, 0.58)', border: '1px solid rgba(245, 158, 11, 0.24)' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24', marginBottom: 8 }}>
-                STEP 3 · ASSIGN HOLD OR WAIT RULE
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 8 }}>
-                <select
-                  className="in"
-                  style={{ marginRight: 0, width: '100%' }}
-                  value={selectedProc}
-                  onChange={e => setSelectedProc(e.target.value)}
-                >
-                  {customProcs.map(p => (
-                    <option key={p.id} value={p.id}>Proc: {p.label}</option>
-                  ))}
+            {/* Step 3 */}
+            <div style={{ padding: 12, borderRadius: 8, background: 'var(--bg)', border: '1px solid var(--line)' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--a)', marginBottom: 8 }}>3. Connect Hold / Wait</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 6 }}>
+                <select className="in" style={{ marginRight: 0, width: '100%' }} value={selectedProc} onChange={e => setSelectedProc(e.target.value)}>
+                  {customProcs.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
                 </select>
-                <select
-                  className="in"
-                  style={{ marginRight: 0, width: '100%' }}
-                  value={selectedRes}
-                  onChange={e => setSelectedRes(e.target.value)}
-                >
-                  {customRess.map(r => (
-                    <option key={r.id} value={r.id}>Lock: {r.label}</option>
-                  ))}
+                <select className="in" style={{ marginRight: 0, width: '100%' }} value={selectedRes} onChange={e => setSelectedRes(e.target.value)}>
+                  {customRess.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
                 </select>
               </div>
-              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-                <select
-                  className="in"
-                  style={{ flex: 1, marginRight: 0 }}
-                  value={edgeKind}
-                  onChange={e => setEdgeKind(e.target.value)}
-                >
-                  <option value="hold">Process HOLDS Lock (R → P)</option>
-                  <option value="wait">Process WAITS FOR Lock (P → R)</option>
+              <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+                <select className="in" style={{ flex: 1, marginRight: 0 }} value={edgeKind} onChange={e => setEdgeKind(e.target.value)}>
+                  <option value="hold">HOLDS (R → P)</option>
+                  <option value="wait">WAITS (P → R)</option>
                 </select>
-                <Btn variant="primary" onClick={addCustomEdge}>
-                  <Plus size={13} /> Connect
-                </Btn>
+                <Btn variant="primary" onClick={addCustomEdge}><Plus size={12} /> Link</Btn>
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, maxHeight: 62, overflowY: 'auto' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 48, overflowY: 'auto' }}>
                 {customEdges.map((e, idx) => {
                   const fn = customNodes.find(n => n.id === e.from)?.short || e.from
                   const tn = customNodes.find(n => n.id === e.to)?.short || e.to
@@ -933,21 +665,17 @@ export default function Deadlock({ src }) {
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: 5,
-                        padding: '2px 7px',
-                        borderRadius: 6,
+                        gap: 4,
+                        padding: '1px 6px',
+                        borderRadius: 4,
                         fontSize: 10,
-                        background: e.kind === 'wait' ? 'rgba(244,63,94,0.16)' : 'rgba(16,185,129,0.14)',
-                        border: `1px solid ${e.kind === 'wait' ? 'rgba(244,63,94,0.4)' : 'rgba(16,185,129,0.35)'}`,
-                        color: e.kind === 'wait' ? '#fda4af' : '#6ee7b7',
+                        background: e.kind === 'wait' ? 'rgba(229,72,77,0.14)' : 'rgba(76,195,138,0.14)',
+                        color: e.kind === 'wait' ? 'var(--r)' : 'var(--g)',
                       }}
                     >
-                      {fn} → {tn}
-                      <button
-                        onClick={() => removeCustomEdge(idx)}
-                        style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}
-                      >
-                        <Trash2 size={10} />
+                      {fn}→{tn}
+                      <button onClick={() => removeCustomEdge(idx)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0 }}>
+                        <Trash2 size={9} />
                       </button>
                     </span>
                   )
@@ -956,9 +684,8 @@ export default function Deadlock({ src }) {
             </div>
           </div>
 
-          {/* Active Nodes Chips */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-            <span style={{ fontSize: 11, color: 'var(--dim)', alignSelf: 'center', marginRight: 4 }}>Active Graph Nodes:</span>
+          {/* Active Nodes */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
             {customNodes.map(n => (
               <span
                 key={n.id}
@@ -966,23 +693,19 @@ export default function Deadlock({ src }) {
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 6,
-                  padding: '3px 8px',
+                  gap: 5,
+                  padding: '2px 8px',
                   borderRadius: 999,
                   fontSize: 11,
-                  background: n.type === 'process' ? 'rgba(56, 189, 248, 0.14)' : 'rgba(167, 139, 250, 0.14)',
-                  border: `1px solid ${n.type === 'process' ? 'rgba(56, 189, 248, 0.35)' : 'rgba(167, 139, 250, 0.35)'}`,
+                  background: 'var(--bg)',
+                  border: '1px solid var(--line)',
                   color: 'var(--fg)',
                 }}
               >
                 {n.label}
                 {customNodes.length > 2 && (
-                  <button
-                    onClick={() => removeCustomNode(n.id)}
-                    title="Remove node"
-                    style={{ background: 'none', border: 'none', color: '#fb7185', cursor: 'pointer', padding: 0, display: 'flex' }}
-                  >
-                    <Trash2 size={11} />
+                  <button onClick={() => removeCustomNode(n.id)} style={{ background: 'none', border: 'none', color: 'var(--r)', cursor: 'pointer', padding: 0 }}>
+                    <Trash2 size={10} />
                   </button>
                 )}
               </span>
@@ -991,26 +714,15 @@ export default function Deadlock({ src }) {
         </div>
       )}
 
-      {/* ── Main 2-Column Stage: RAG Visualizer + Coffman Forensics ── */}
-      <div
-        style={{
-          position: 'relative',
-          zIndex: 1,
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
-          gap: 18,
-          alignItems: 'start',
-        }}
-      >
-        {/* Left: Interactive 3D/2D Graph + Live Status Strip */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* ── Main 2-Column Stage ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, alignItems: 'start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', fontSize: 12 }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, color: 'var(--fg)' }}>
-              <Cpu size={15} color="var(--accent)" />
-              Interactive Resource Allocation Graph (RAG)
+              <Cpu size={14} color="var(--accent)" /> Resource Allocation Graph (RAG)
             </span>
-            <span className="mono" style={{ fontSize: 11, color: 'var(--dim)' }}>
-              {labMode === 'custom' ? `${customProcs.length} Procs · ${customRess.length} Locks` : 'POSIX flock · /proc/locks'}
+            <span className="mono dim" style={{ fontSize: 11 }}>
+              {labMode === 'custom' ? `${customProcs.length} Procs · ${customRess.length} Locks` : 'POSIX flock'}
             </span>
           </div>
 
@@ -1021,220 +733,109 @@ export default function Deadlock({ src }) {
             cycle={labMode === 'custom' ? customCycle : statusData?.cycle}
             customNodes={labMode === 'custom' ? customNodes : null}
             customEdges={labMode === 'custom' ? customEdges : null}
-            height={460}
+            height={420}
           />
 
-          <div
-            style={{
-              ...glassCardStyle,
-              padding: '12px 16px',
-              borderLeft: `3px solid ${accentBorderColor}`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: 10,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Activity size={15} color={accentBorderColor} />
-              <span className="mono" style={{ fontSize: 12, color: 'var(--fg)' }}>
+          <div style={{ ...panelStyle, padding: '10px 14px', borderLeft: `3px solid ${accentBorderColor}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Activity size={14} color={accentBorderColor} />
+              <span className="mono" style={{ fontSize: 11, color: 'var(--fg)' }}>
                 {isDeadlock
                   ? customCycle
-                    ? `Cycle Confirmed: ${customCycle.join(' → ')}`
-                    : 'Kernel Deadlock Established · P1 and P2 blocked waiting on mutual locks.'
+                    ? `Cycle: ${customCycle.join(' → ')}`
+                    : 'Deadlock: P1 ⇄ P2 blocked'
                   : isPrevented
-                  ? 'Resource Hierarchy Enforced · Ascending lock sequence eliminates circular wait.'
+                  ? 'Safe: Ordered lock acquisition'
                   : isResolved
-                  ? 'Victim Preempted · Locks released and survivor process completed.'
-                  : 'Idle · No conflicting lock cycles detected.'}
+                  ? 'Recovered: Victim preempted'
+                  : 'Idle: No lock cycle'}
               </span>
             </div>
             {labMode === 'kernel' && statusData?.p1?.pid && (
-              <Badge v={`P1:${statusData.p1.pid} · P2:${statusData.p2?.pid || 'Terminated'}`} tone="p" />
+              <Badge v={`P1:${statusData.p1.pid} · P2:${statusData.p2?.pid || 'Killed'}`} tone="p" />
             )}
           </div>
         </div>
 
-        {/* Right: Coffman Conditions + Hierarchy Sequence */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={glassCardStyle}>
-            <h4 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: 'var(--fg)', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 8 }}>
+        {/* Right: Concise Coffman Conditions + Hierarchy */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={panelStyle}>
+            <h4 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: 'var(--fg)', borderBottom: '1px solid var(--line)', paddingBottom: 8 }}>
               Coffman Conditions Forensics
             </h4>
-            <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--text-secondary)' }}>
-              Deadlock mathematically requires all 4 conditions to hold simultaneously:
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <CoffmanRow
-                icon={<Lock size={15} color="#34d399" />}
+                icon={<Lock size={14} color="var(--g)" />}
                 title="1. Mutual Exclusion"
                 badge={<Badge v={hasMutualExclusion ? 'ACTIVE' : 'STANDBY'} tone={hasMutualExclusion ? 'r' : 'c'} />}
-                accent="#34d399"
-                desc="Locks are exclusive; only one process can hold a lock at a time."
+                accent="var(--g)"
+                desc="Exclusive lock per resource."
               />
               <CoffmanRow
-                icon={<AlertTriangle size={15} color={customHoldAndWait ? '#fb7185' : '#85858b'} />}
+                icon={<AlertTriangle size={14} color={customHoldAndWait ? 'var(--r)' : 'var(--dim)'} />}
                 title="2. Hold & Wait"
                 badge={<Badge v={customHoldAndWait ? 'ACTIVE' : 'INACTIVE'} tone={customHoldAndWait ? 'r' : 'g'} />}
-                accent={customHoldAndWait ? '#fb7185' : '#4cc38a'}
-                desc={
-                  customHoldAndWait
-                    ? 'At least one process holds a lock while waiting for another held lock.'
-                    : 'Processes release or do not hold resources while waiting.'
-                }
+                accent={customHoldAndWait ? 'var(--r)' : 'var(--g)'}
+                desc={customHoldAndWait ? 'Holding lock while waiting.' : 'No simultaneous hold & wait.'}
               />
               <CoffmanRow
-                icon={<ShieldAlert size={15} color={isResolved ? '#34d399' : '#fbbf24'} />}
+                icon={<ShieldAlert size={14} color={isResolved ? 'var(--g)' : 'var(--a)'} />}
                 title="3. No Preemption"
-                badge={<Badge v={isResolved ? 'BROKEN (PREEMPTED)' : 'ACTIVE'} tone={isResolved ? 'g' : 'a'} />}
-                accent={isResolved ? '#34d399' : '#f59e0b'}
-                desc={
-                  isResolved
-                    ? 'Preemption forcibly terminated victim process to release held locks.'
-                    : 'OS does not seize locks without explicit release or termination.'
-                }
+                badge={<Badge v={isResolved ? 'BROKEN' : 'ACTIVE'} tone={isResolved ? 'g' : 'a'} />}
+                accent={isResolved ? 'var(--g)' : 'var(--a)'}
+                desc={isResolved ? 'Victim terminated & freed.' : 'Kernel awaits release.'}
               />
               <CoffmanRow
-                icon={
-                  isPrevented ? (
-                    <CheckCircle2 size={15} color="#34d399" />
-                  ) : isDeadlock ? (
-                    <XCircle size={15} color="#fb7185" />
-                  ) : (
-                    <Lock size={15} color="#38bdf8" />
-                  )
-                }
+                icon={isPrevented ? <CheckCircle2 size={14} color="var(--g)" /> : isDeadlock ? <XCircle size={14} color="var(--r)" /> : <Lock size={14} color="var(--c)" />}
                 title="4. Circular Wait"
-                badge={
-                  <Badge
-                    v={isDeadlock ? 'LOOP DETECTED' : isPrevented ? 'BROKEN BY RULE' : 'CLEARED'}
-                    tone={isDeadlock ? 'r' : 'g'}
-                  />
-                }
-                accent={isDeadlock ? '#fb7185' : '#10b981'}
-                desc={
-                  isPrevented
-                    ? 'Dijkstra hierarchy F(R_1)=1 < F(R_2)=2 breaks circular dependency.'
-                    : isDeadlock
-                    ? 'Closed wait cycle confirmed by DFS Wait-For Graph detector.'
-                    : 'No circular wait cycles present.'
-                }
+                badge={<Badge v={isDeadlock ? 'CYCLE' : isPrevented ? 'ORDERED' : 'CLEARED'} tone={isDeadlock ? 'r' : 'g'} />}
+                accent={isDeadlock ? 'var(--r)' : 'var(--g)'}
+                desc={isPrevented ? 'Ascending rank order.' : isDeadlock ? 'Wait cycle confirmed.' : 'Acyclic graph.'}
               />
             </div>
           </div>
 
-          <div style={glassCardStyle}>
-            <h4 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: 'var(--fg)', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 8 }}>
-              Dijkstra Resource Hierarchy Sequence
+          <div style={panelStyle}>
+            <h4 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: 'var(--fg)', borderBottom: '1px solid var(--line)', paddingBottom: 8 }}>
+              Lock Hierarchy Sequence
             </h4>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
               {(labMode === 'custom' ? customRess : [{ id: 'RA', label: 'R_A' }, { id: 'RB', label: 'R_B' }]).map((r, i, arr) => (
-                <span key={r.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <span
-                    className="mono"
-                    style={{
-                      padding: '4px 9px',
-                      borderRadius: 7,
-                      fontSize: 11,
-                      fontWeight: 600,
-                      background: isDeadlock ? 'rgba(244,63,94,0.14)' : 'rgba(16,185,129,0.14)',
-                      border: `1px solid ${isDeadlock ? 'rgba(244,63,94,0.38)' : 'rgba(16,185,129,0.38)'}`,
-                      color: isDeadlock ? '#fda4af' : '#6ee7b7',
-                    }}
-                  >
-                    #{i + 1} {r.label}
-                  </span>
-                  {i < arr.length - 1 && <ArrowRight size={13} color="var(--dim)" />}
+                <span key={r.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <Badge v={`#${i + 1} ${r.label}`} tone={isDeadlock ? 'r' : 'g'} />
+                  {i < arr.length - 1 && <ArrowRight size={12} color="var(--dim)" />}
                 </span>
               ))}
-            </div>
-            <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text-secondary)' }}>
-              {isDeadlock
-                ? 'Rule Violated: A process requested a lower-rank lock while holding a higher-rank lock.'
-                : 'Rule Satisfied: Locks must be acquired strictly from left (#1) to right.'}
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Deep-Dive Glassmorphic Tabs: Banker's Sequence | Bash Code | Theory ── */}
-      <div style={{ ...glassCardStyle, padding: 0, overflow: 'hidden', position: 'relative', zIndex: 1 }}>
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 8,
-            padding: '10px 16px 0',
-            background: 'rgba(12, 14, 20, 0.72)',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-          }}
-        >
-          <TabBtn
-            active={activeTab === 'simulator'}
-            onClick={() => setActiveTab('simulator')}
-            icon={<Calculator size={14} color="#34d399" />}
-            label="Banker's Algorithm & Sequence Flow"
-          />
-          <TabBtn
-            active={activeTab === 'code'}
-            onClick={() => setActiveTab('code')}
-            icon={<Terminal size={14} color="#38bdf8" />}
-            label="Real Linux Bash Source Code"
-          />
-          <TabBtn
-            active={activeTab === 'theory'}
-            onClick={() => setActiveTab('theory')}
-            icon={<BookOpen size={14} color="#a78bfa" />}
-            label="Academic Operating Systems Guide"
-          />
+      {/* ── Concise Bottom Tabs ── */}
+      <div style={{ ...panelStyle, padding: 0, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', gap: 8, padding: '8px 16px 0', background: 'var(--bar-bg)', borderBottom: '1px solid var(--line)' }}>
+          <TabBtn active={activeTab === 'simulator'} onClick={() => setActiveTab('simulator')} icon={<Calculator size={13} color="var(--g)" />} label="Banker's Algorithm" />
+          <TabBtn active={activeTab === 'code'} onClick={() => setActiveTab('code')} icon={<Terminal size={13} color="var(--c)" />} label="Bash Source" />
+          <TabBtn active={activeTab === 'theory'} onClick={() => setActiveTab('theory')} icon={<BookOpen size={13} color="var(--p)" />} label="OS Theory" />
         </div>
 
-        {/* Tab 1: Banker's Algorithm + Step-by-Step Sequence Timeline */}
         {activeTab === 'simulator' && (
-          <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <div>
-                <h3 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600, color: 'var(--fg)' }}>
-                  Dijkstra&apos;s Banker&apos;s Safety Algorithm
-                </h3>
-                <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
-                  Test Safe vs Unsafe resource states and inspect the exact step-by-step execution sequence.
-                </p>
-              </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <Btn
-                  variant="secondary"
-                  onClick={() => {
-                    setBankerInput(SAFE_BANKER_PRESET)
-                    setBankerResult(null)
-                  }}
-                >
-                  Load Safe Preset
-                </Btn>
-                <Btn
-                  variant="secondary"
-                  onClick={() => {
-                    setBankerInput(UNSAFE_BANKER_PRESET)
-                    setBankerResult(null)
-                  }}
-                >
-                  Load Unsafe Preset
-                </Btn>
+          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)' }}>Dijkstra&apos;s Banker&apos;s Safety Check</span>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <Btn variant="secondary" onClick={() => { setBankerInput(SAFE_BANKER_PRESET); setBankerResult(null) }}>Safe Preset</Btn>
+                <Btn variant="secondary" onClick={() => { setBankerInput(UNSAFE_BANKER_PRESET); setBankerResult(null) }}>Unsafe Preset</Btn>
                 <Btn variant="primary" onClick={solveBanker} disabled={bankerLoading}>
-                  <RefreshCw size={14} className={bankerLoading ? 'spin' : ''} />
-                  Compute Safe Sequence
+                  <RefreshCw size={13} className={bankerLoading ? 'spin' : ''} /> Compute Sequence
                 </Btn>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
-              <div style={{ padding: 14, borderRadius: 10, background: 'rgba(10, 12, 18, 0.55)', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: '#34d399', marginBottom: 10 }}>
-                  AVAILABLE VECTOR [A, B, C] (EDITABLE)
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10 }}>
+              <div style={{ padding: 12, borderRadius: 8, background: 'var(--bg)', border: '1px solid var(--line)' }}>
+                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--g)', marginBottom: 8 }}>AVAILABLE [A, B, C]</div>
+                <div style={{ display: 'flex', gap: 6 }}>
                   {bankerInput.available.map((v, idx) => (
                     <input
                       key={idx}
@@ -1251,53 +852,29 @@ export default function Deadlock({ src }) {
                         })
                       }}
                       className="mono"
-                      style={{
-                        width: '100%',
-                        textAlign: 'center',
-                        padding: '8px 4px',
-                        borderRadius: 7,
-                        background: 'rgba(16, 185, 129, 0.14)',
-                        border: '1px solid rgba(16, 185, 129, 0.35)',
-                        color: '#34d399',
-                        fontWeight: 700,
-                        fontSize: 15,
-                      }}
+                      style={{ width: '100%', textAlign: 'center', padding: '6px 4px', borderRadius: 6, background: 'var(--panel)', border: '1px solid var(--line)', color: 'var(--g)', fontWeight: 700, fontSize: 14 }}
                     />
                   ))}
                 </div>
               </div>
 
-              <MatrixBox title="ALLOCATION MATRIX" color="#38bdf8" rows={bankerInput.allocation} />
-              <MatrixBox title="MAX DEMAND MATRIX" color="#a78bfa" rows={bankerInput.maximum} />
-              <MatrixBox title="NEED MATRIX (MAX - ALLOC)" color="#fbbf24" rows={needMatrix} />
+              <MatrixBox title="ALLOCATION" color="var(--c)" rows={bankerInput.allocation} />
+              <MatrixBox title="MAX DEMAND" color="var(--p)" rows={bankerInput.maximum} />
+              <MatrixBox title="NEED (MAX - ALLOC)" color="var(--a)" rows={needMatrix} />
             </div>
 
             {bankerResult && (
-              <div
-                style={{
-                  padding: 18,
-                  borderRadius: 12,
-                  background: bankerResult.is_safe ? 'rgba(16, 185, 129, 0.10)' : 'rgba(244, 63, 94, 0.10)',
-                  border: `1px solid ${bankerResult.is_safe ? 'rgba(16, 185, 129, 0.38)' : 'rgba(244, 63, 94, 0.38)'}`,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 14,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {bankerResult.is_safe ? <CheckCircle2 size={18} color="#34d399" /> : <XCircle size={18} color="#fb7185" />}
-                    <span style={{ fontWeight: 700, fontSize: 14, color: bankerResult.is_safe ? '#34d399' : '#fb7185' }}>
-                      {bankerResult.is_safe ? 'SAFE STATE CONFIRMED' : 'UNSAFE STATE DETECTED (DEADLOCK RISK)'}
-                    </span>
-                  </div>
+              <div style={{ padding: 14, borderRadius: 8, background: 'var(--bg)', border: `1px solid ${bankerResult.is_safe ? 'var(--g)' : 'var(--r)'}`, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                  <span style={{ fontWeight: 600, fontSize: 13, color: bankerResult.is_safe ? 'var(--g)' : 'var(--r)' }}>
+                    {bankerResult.is_safe ? 'SAFE STATE' : 'UNSAFE STATE (DEADLOCK RISK)'}
+                  </span>
                   {bankerResult.is_safe && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      <Sparkles size={13} color="#34d399" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
                       {bankerResult.safe_sequence.map((proc, idx) => (
-                        <span key={proc} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <span key={proc} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                           <Badge v={proc} tone="g" />
-                          {idx < bankerResult.safe_sequence.length - 1 && <ArrowRight size={12} color="var(--dim)" />}
+                          {idx < bankerResult.safe_sequence.length - 1 && <ArrowRight size={11} color="var(--dim)" />}
                         </span>
                       ))}
                     </div>
@@ -1305,38 +882,17 @@ export default function Deadlock({ src }) {
                 </div>
 
                 {Array.isArray(bankerResult.steps) && bankerResult.steps.length > 0 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 8 }}>
                     {bankerResult.steps.map((st, idx) => (
-                      <div
-                        key={st.process}
-                        style={{
-                          padding: 12,
-                          borderRadius: 10,
-                          background: 'rgba(10, 12, 18, 0.65)',
-                          border: '1px solid rgba(16, 185, 129, 0.28)',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 6,
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <span className="mono" style={{ fontSize: 10, color: 'var(--dim)' }}>STEP #{idx + 1}</span>
+                      <div key={st.process} style={{ padding: 10, borderRadius: 8, background: 'var(--panel)', border: '1px solid var(--line)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span className="mono dim" style={{ fontSize: 10 }}>#{idx + 1}</span>
                           <Badge v={st.process} tone="g" />
                         </div>
-                        <div className="mono" style={{ fontSize: 11, color: '#fbbf24' }}>
-                          Need: [{st.need.join(', ')}] ≤ Work
-                        </div>
-                        <div className="mono" style={{ fontSize: 11, color: '#7dd3fc' }}>
-                          Work: [{st.work_before.join(',')}] → [{st.work_after.join(',')}]
-                        </div>
+                        <div className="mono" style={{ fontSize: 10, color: 'var(--a)' }}>Need [{st.need.join(',')}] ≤ Work</div>
+                        <div className="mono" style={{ fontSize: 10, color: 'var(--c)' }}>Work [{st.work_before.join(',')}] → [{st.work_after.join(',')}]</div>
                       </div>
                     ))}
-                  </div>
-                )}
-
-                {!bankerResult.is_safe && (
-                  <div style={{ fontSize: 12, color: '#fda4af' }}>
-                    No safe sequence exists. Starved / deadlocked processes: {bankerResult.deadlocked_processes.join(', ')}.
                   </div>
                 )}
               </div>
@@ -1344,79 +900,30 @@ export default function Deadlock({ src }) {
           </div>
         )}
 
-        {/* Tab 2: Bash Source Code */}
         {activeTab === 'code' && (
-          <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-              <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                Genuine Linux Bash scripts executed on the host kernel:
-              </span>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <ScriptBtn active={codeType === 'create'} color="#fb7185" onClick={() => setCodeType('create')} label="deadlock_create.sh" />
-                <ScriptBtn active={codeType === 'prevent'} color="#34d399" onClick={() => setCodeType('prevent')} label="deadlock_prevent.sh" />
-                <ScriptBtn active={codeType === 'resolve'} color="#fbbf24" onClick={() => setCodeType('resolve')} label="deadlock_resolve.sh" />
-                <Btn variant="secondary" onClick={copyCode}>
-                  {copied ? <Check size={13} color="#34d399" /> : <Copy size={13} />}
-                  {copied ? 'Copied' : 'Copy'}
-                </Btn>
+          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <ScriptBtn active={codeType === 'create'} color="#e5484d" onClick={() => setCodeType('create')} label="deadlock_create.sh" />
+                <ScriptBtn active={codeType === 'prevent'} color="#4cc38a" onClick={() => setCodeType('prevent')} label="deadlock_prevent.sh" />
+                <ScriptBtn active={codeType === 'resolve'} color="#f59e0b" onClick={() => setCodeType('resolve')} label="deadlock_resolve.sh" />
               </div>
+              <Btn variant="secondary" onClick={copyCode}>
+                {copied ? <Check size={12} color="var(--g)" /> : <Copy size={12} />} {copied ? 'Copied' : 'Copy'}
+              </Btn>
             </div>
-
-            <pre
-              className="mono"
-              style={{
-                margin: 0,
-                padding: 16,
-                borderRadius: 10,
-                background: 'rgba(9, 10, 15, 0.85)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                fontSize: 12,
-                lineHeight: 1.65,
-                overflowX: 'auto',
-                color: '#e2e8f0',
-              }}
-            >
-              {BASH_CODE_SNIPPETS[codeType].split('\n').map((line, i) => {
-                const isComment = line.trim().startsWith('#')
-                return (
-                  <div key={i} style={{ display: 'flex', gap: 14 }}>
-                    <span style={{ color: '#475569', userSelect: 'none', minWidth: 22, textAlign: 'right' }}>{i + 1}</span>
-                    <span style={{ color: isComment ? '#64748b' : line.includes('flock') ? '#34d399' : '#e2e8f0' }}>{line}</span>
-                  </div>
-                )
-              })}
+            <pre className="mono" style={{ margin: 0, padding: 12, borderRadius: 8, background: '#0d0d0f', border: '1px solid var(--line)', fontSize: 11, lineHeight: 1.6, overflowX: 'auto', color: 'var(--fg)' }}>
+              {BASH_CODE_SNIPPETS[codeType]}
             </pre>
           </div>
         )}
 
-        {/* Tab 3: Academic OS Guide */}
         {activeTab === 'theory' && (
-          <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#38bdf8' }}>
-              Formal Operating Systems Deadlock Theory (Faculty Presentation)
-            </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
-              <TheoryCard
-                title="1. Deadlock Prevention (Havender)"
-                color="#34d399"
-                body="Assigns a strict total order F(R_A) = 1 < F(R_B) = 2 to all locks. Because every process acquires locks in ascending order, Circular Wait is mathematically impossible."
-              />
-              <TheoryCard
-                title="2. Deadlock Avoidance (Banker's)"
-                color="#38bdf8"
-                body="Dynamically checks each allocation request using Dijkstra's Banker's Algorithm. Requests are granted only if at least one Safe Sequence exists for all processes."
-              />
-              <TheoryCard
-                title="3. Wait-For Graph Detection"
-                color="#a78bfa"
-                body="Builds a directed Wait-For Graph from kernel /proc/locks or custom PC dependencies and runs Depth-First Search (DFS) to detect cycles in real time."
-              />
-              <TheoryCard
-                title="4. Recovery via Preemption"
-                color="#fbbf24"
-                body="Selects a minimum-cost victim process, terminates it cleanly (SIGTERM/SIGKILL), and releases its held locks so survivor processes complete immediately."
-              />
-            </div>
+          <div style={{ padding: 16, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+            <TheoryCard title="1. Prevention (Havender)" color="var(--g)" body="Enforces F(R_1) < F(R_2) ascending lock order to break Circular Wait." />
+            <TheoryCard title="2. Avoidance (Banker's)" color="var(--c)" body="Simulates allocation to guarantee a safe execution sequence exists." />
+            <TheoryCard title="3. Detection (DFS)" color="var(--p)" body="Detects cycles in the Wait-For Graph built from active locks." />
+            <TheoryCard title="4. Recovery (Preempt)" color="var(--a)" body="Terminates minimum-cost victim process to release blocked locks." />
           </div>
         )}
       </div>
@@ -1426,25 +933,14 @@ export default function Deadlock({ src }) {
 
 function CoffmanRow({ icon, title, badge, accent, desc }) {
   return (
-    <div
-      style={{
-        padding: '10px 12px',
-        borderRadius: 9,
-        background: 'rgba(10, 12, 18, 0.55)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        borderLeft: `3px solid ${accent}`,
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: 10,
-      }}
-    >
-      <div style={{ marginTop: 2, flexShrink: 0 }}>{icon}</div>
+    <div style={{ padding: '8px 10px', borderRadius: 8, background: 'var(--bg)', border: '1px solid var(--line)', borderLeft: `3px solid ${accent}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ flexShrink: 0 }}>{icon}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
           <span style={{ fontWeight: 600, fontSize: 12, color: 'var(--fg)' }}>{title}</span>
           {badge}
         </div>
-        <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>{desc}</div>
+        <div className="dim" style={{ fontSize: 11 }}>{desc}</div>
       </div>
     </div>
   )
@@ -1457,8 +953,8 @@ function TabBtn({ active, onClick, icon, label }) {
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: 7,
-        padding: '8px 12px 10px',
+        gap: 6,
+        padding: '8px 10px',
         background: 'transparent',
         border: 'none',
         borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent',
@@ -1476,24 +972,13 @@ function TabBtn({ active, onClick, icon, label }) {
 
 function MatrixBox({ title, color, rows }) {
   return (
-    <div style={{ padding: 14, borderRadius: 10, background: 'rgba(10, 12, 18, 0.55)', border: '1px solid rgba(255,255,255,0.08)' }}>
-      <div style={{ fontSize: 11, fontWeight: 600, color, marginBottom: 8 }}>{title}</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+    <div style={{ padding: 12, borderRadius: 8, background: 'var(--bg)', border: '1px solid var(--line)' }}>
+      <div style={{ fontSize: 10, fontWeight: 600, color, marginBottom: 6 }}>{title}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {rows.map((row, idx) => (
-          <div
-            key={idx}
-            className="mono"
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: 12,
-              padding: '3px 6px',
-              borderRadius: 4,
-              background: idx % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'transparent',
-            }}
-          >
-            <span style={{ color: 'var(--dim)' }}>P{idx}</span>
-            <span style={{ color: 'var(--fg)' }}>[{row.join(', ')}]</span>
+          <div key={idx} className="mono" style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+            <span className="dim">P{idx}</span>
+            <span>[{row.join(', ')}]</span>
           </div>
         ))}
       </div>
@@ -1507,14 +992,14 @@ function ScriptBtn({ active, color, onClick, label }) {
       onClick={onClick}
       className="mono"
       style={{
-        padding: '5px 10px',
-        borderRadius: 6,
+        padding: '4px 8px',
+        borderRadius: 5,
         fontSize: 11,
         fontWeight: 600,
         cursor: 'pointer',
         background: active ? `${color}22` : 'transparent',
         color: active ? color : 'var(--dim)',
-        border: `1px solid ${active ? `${color}66` : 'rgba(255,255,255,0.12)'}`,
+        border: `1px solid ${active ? color : 'var(--line)'}`,
       }}
     >
       {label}
@@ -1524,17 +1009,9 @@ function ScriptBtn({ active, color, onClick, label }) {
 
 function TheoryCard({ title, color, body }) {
   return (
-    <div
-      style={{
-        padding: 16,
-        borderRadius: 10,
-        background: 'rgba(10, 12, 18, 0.55)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        borderTop: `3px solid ${color}`,
-      }}
-    >
-      <h4 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600, color }}>{title}</h4>
-      <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>{body}</p>
+    <div style={{ padding: 12, borderRadius: 8, background: 'var(--bg)', border: '1px solid var(--line)', borderTop: `2px solid ${color}` }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color, marginBottom: 4 }}>{title}</div>
+      <div className="dim" style={{ fontSize: 11, lineHeight: 1.45 }}>{body}</div>
     </div>
   )
 }
