@@ -196,6 +196,7 @@ function Main() {
   })
   const [pal, setPal]         = useState(false)
   const [showKeys, setShowKeys] = useState(false)
+  const [keySequence, setKeySequence] = useState('')
   const lastKeyRef            = useRef({ key: '', ts: 0 })
   const [score, setScore]     = useState(0)
   const [theme, setTheme]     = useState(() =>
@@ -269,26 +270,102 @@ function Main() {
     bump()
     const interval = setInterval(bump, 4000)
     const onKey = e => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-        if (e.key === 'Escape') setPal(false)
+      // Ignore if user is currently typing in an input, textarea, or contentEditable element
+      const isInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable || (e.target.closest && e.target.closest('.xterm'))
+      if (isInput) {
+        if (e.key === 'Escape') {
+          if (typeof e.target.blur === 'function') e.target.blur()
+          setPal(false)
+          setShowKeys(false)
+          setKeySequence('')
+        }
         return
       }
-      if (e.ctrlKey && e.key === 'k') { e.preventDefault(); setPal(v => !v) }
-      if (e.key === '?') { setShowKeys(v => !v) }
-      if (e.key === 'Escape') { setShowKeys(false); setPal(false) }
 
-      const now = Date.now()
-      if (lastKeyRef.current.key === 'g' && now - lastKeyRef.current.ts < 1000) {
-        if (e.key === 'o') navigate('overview')
-        else if (e.key === 'p') navigate('process')
-        else if (e.key === 'l') navigate('live')
-        else if (e.key === 'n') navigate('network')
-        else if (e.key === 't') navigate('terminal')
-        else if (e.key === 'a') navigate('alerts')
-        else if (e.key === 'd') navigate('deadlock')
+      // Command palette: Ctrl+K or Cmd+K
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPal(v => !v)
+        return
+      }
+
+      // Help modal: ? or / or F1
+      if (e.key === '?' || e.key === 'F1' || (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey)) {
+        e.preventDefault()
+        setShowKeys(v => !v)
+        return
+      }
+
+      // Escape closes overlays
+      if (e.key === 'Escape') {
+        setShowKeys(false)
+        setPal(false)
+        setKeySequence('')
         lastKeyRef.current = { key: '', ts: 0 }
-      } else if (e.key === 'g') {
+        return
+      }
+
+      // Direct single number key navigation (1-9, 0)
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        const numMap = {
+          '1': 'overview',
+          '2': 'live',
+          '3': 'system',
+          '4': 'process',
+          '5': 'network',
+          '6': 'integrity',
+          '7': 'auth',
+          '8': 'persistence',
+          '9': 'alerts',
+          '0': 'deadlock'
+        }
+        if (numMap[e.key]) {
+          navigate(numMap[e.key])
+          setKeySequence('')
+          lastKeyRef.current = { key: '', ts: 0 }
+          return
+        }
+      }
+
+      // Two-key Go sequence (e.g. g o, g p, g d...) with generous 2.5s window
+      const k = e.key.toLowerCase()
+      const now = Date.now()
+
+      if (lastKeyRef.current.key === 'g' && now - lastKeyRef.current.ts < 2500) {
+        const routes = {
+          o: 'overview',
+          p: 'process',
+          l: 'live',
+          s: 'system',
+          n: 'network',
+          i: 'integrity',
+          a: 'alerts',
+          u: 'usb',
+          t: 'terminal',
+          d: 'deadlock',
+          b: 'demo',
+          r: 'reports',
+          m: 'timeline',
+          e: 'settings',
+          h: 'about',
+          k: 'auth'
+        }
+        if (routes[k]) {
+          navigate(routes[k])
+        }
+        setKeySequence('')
+        lastKeyRef.current = { key: '', ts: 0 }
+      } else if (k === 'g' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         lastKeyRef.current = { key: 'g', ts: now }
+        setKeySequence('g')
+        setTimeout(() => {
+          if (Date.now() - lastKeyRef.current.ts >= 2500) {
+            setKeySequence('')
+          }
+        }, 2550)
+      } else {
+        setKeySequence('')
+        lastKeyRef.current = { key: '', ts: 0 }
       }
     }
     window.addEventListener('keydown', onKey)
@@ -350,6 +427,37 @@ function Main() {
         </div>
       )}
 
+      {/* ── Key Sequence HUD (Visual feedback for g <key> navigation) ── */}
+      {keySequence && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 24,
+            right: 24,
+            zIndex: 9999,
+            background: 'var(--panel)',
+            border: '1px solid var(--accent)',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.45)',
+            borderRadius: 6,
+            padding: '8px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            fontFamily: 'monospace',
+            fontSize: 12,
+            color: 'var(--fg)',
+            animation: 'fadeIn 0.15s ease'
+          }}
+        >
+          <span style={{ background: 'var(--accent)', color: '#fff', padding: '2px 6px', borderRadius: 3, fontWeight: 700 }}>
+            {keySequence}-
+          </span>
+          <span style={{ color: 'var(--dim)', fontSize: 11 }}>
+            press: <b>o</b> (overview) · <b>p</b> (process) · <b>0/d</b> (deadlock) · <b>l</b> (live) · <b>n</b> (network) · <b>t</b> (terminal) · <b>a</b> (alerts)
+          </span>
+        </div>
+      )}
+
       {/* ── Command palette (Outside Grid) ── */}
       {pal && (
         <CommandPalette
@@ -375,35 +483,51 @@ function Main() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', fontSize: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
                 <span className="dim">Jump to page</span>
-                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>Ctrl+K</kbd>
+                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>Ctrl+K / ⌘K</kbd>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
                 <span className="dim">Shortcuts guide</span>
-                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>?</kbd>
+                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>? / F1</kbd>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
-                <span className="dim">Overview</span>
-                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>g o</kbd>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
-                <span className="dim">Processes</span>
-                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>g p</kbd>
+                <span className="dim">Quick Overview</span>
+                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>1 or g o</kbd>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
                 <span className="dim">Live Stream</span>
-                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>g l</kbd>
+                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>2 or g l</kbd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                <span className="dim">System Telemetry</span>
+                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>3 or g s</kbd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                <span className="dim">Processes</span>
+                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>4 or g p</kbd>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
                 <span className="dim">Network</span>
-                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>g n</kbd>
+                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>5 or g n</kbd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                <span className="dim">File Integrity</span>
+                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>6 or g i</kbd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                <span className="dim">Login Activity</span>
+                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>7 or g k</kbd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                <span className="dim">Alerts</span>
+                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>9 or g a</kbd>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
                 <span className="dim">Terminal</span>
                 <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>g t</kbd>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
-                <span className="dim">Alerts</span>
-                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>g a</kbd>
+                <span className="dim">Deadlock Lab</span>
+                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>0 or g d</kbd>
               </div>
             </div>
           </div>
