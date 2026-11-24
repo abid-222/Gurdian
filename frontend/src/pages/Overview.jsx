@@ -34,6 +34,7 @@ import {
 import { api } from '../api'
 import { useLive } from '../hooks/useLive'
 import { Badge, Btn, Card } from '../components/ui'
+import AttackSimulator from '../components/AttackSimulator'
 
 // ── Unified risk scale ───────────────────────────────────────────────────────
 function riskLevel(score) {
@@ -673,9 +674,16 @@ export default function Overview({ src = 'both', bump }) {
                     <Download size={11} /> JSON stream
                   </button>
                 </a>
-                <a href="#/demo" style={{ textDecoration: 'none' }}>
+                <a
+                  href="#bas-simulator"
+                  onClick={e => {
+                    e.preventDefault()
+                    document.getElementById('bas-simulator')?.scrollIntoView({ behavior: 'smooth' })
+                  }}
+                  style={{ textDecoration: 'none' }}
+                >
                   <button className="btn btn-sm btn-danger" style={{ width: '100%', fontSize: 11, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                    <Zap size={11} /> Demo lab
+                    <Zap size={11} /> Attack Sim
                   </button>
                 </a>
               </div>
@@ -688,7 +696,10 @@ export default function Overview({ src = 'both', bump }) {
         </Card>
       </div>
 
-      {/* ── 5. Risk score history (Preserves Vitest 'Risk score history') ── */}
+      {/* ── 5. Breach & Attack Simulation (Merged Demo Lab + Before/After Detection Proof) ── */}
+      <AttackSimulator src={src} onUpdate={load} />
+
+      {/* ── 6. Risk score history (Preserves Vitest 'Risk score history') ── */}
       <Card
         title={
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>

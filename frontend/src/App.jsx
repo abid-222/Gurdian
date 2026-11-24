@@ -98,7 +98,6 @@ const NAV_GROUPS = [
     label: 'Tools',
     items: [
       { key: 'terminal', icon: TerminalIcon, label: 'Terminal' },
-      { key: 'demo',     icon: Crosshair,    label: 'Demo Lab' },
       { key: 'deadlock', icon: ShieldAlert,  label: 'Deadlock Lab' },
       { key: 'settings', icon: SettingsIcon, label: 'Settings' },
       { key: 'about',    icon: Info,         label: 'About'    },
