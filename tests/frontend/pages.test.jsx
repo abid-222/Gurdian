@@ -17,6 +17,7 @@ import Timeline from '../../frontend/src/pages/Timeline'
 import Usb from '../../frontend/src/pages/Usb'
 import Settings from '../../frontend/src/pages/Settings'
 import About from '../../frontend/src/pages/About'
+import Deadlock from '../../frontend/src/pages/Deadlock'
 
 globalThis.ResizeObserver ||= class { observe() {} unobserve() {} disconnect() {} }   // jsdom has none (Recharts needs it)
 beforeEach(() => installFakes())
@@ -76,4 +77,11 @@ test('about: 5 team members, roles, and defense highlights', async () => {
   await seen('Sadia Rahman')
   await seen('Nafis Fuad')
   await seen('Key Viva / Examiner Defense Highlights')
+})
+
+test('deadlock lab: triggers, coffman conditions, 3d canvas', async () => {
+  render(<Deadlock src="linux" />)
+  await seen('Deadlock Engineering Lab')
+  await seen('Coffman Conditions Forensics')
+  await seen('Trigger OS Deadlock')
 })

@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketException
 from fastapi.middleware.cors import CORSMiddleware
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from app import live, report, terminal
+from app import deadlock, live, report, terminal
 from app.parsers import COLS, KEY
 from app.runner import BASH, CACHE, FOLDER, ROOT, USER_WATCH, history, save_baseline, scan_one
 from database import db as database
@@ -107,6 +107,27 @@ def demo(action: str, source: str = "linux"):
     if source not in DEMO or action not in DEMO[source]: raise HTTPException(404)
     p = subprocess.run([BASH, str(ROOT / "bash/demo" / f"{source}-lab.sh"), action], capture_output=True, text=True, timeout=20, shell=False)
     CACHE.clear(); return {"ok": p.returncode == 0, "output": (p.stdout + p.stderr).strip()}
+
+@api.post("/api/deadlock/action/{action}")
+def deadlock_action(action: str, source: str = "linux"):
+    if action not in {"create", "prevent", "resolve", "status", "cleanup"}: raise HTTPException(404, "invalid deadlock action")
+    return deadlock.run_deadlock_action(action, source)
+
+@api.post("/api/deadlock/banker")
+def deadlock_banker(d: dict):
+    avail = d.get("available", [])
+    max_m = d.get("maximum", [])
+    alloc = d.get("allocation", [])
+    if not isinstance(avail, list) or not isinstance(max_m, list) or not isinstance(alloc, list):
+        raise HTTPException(400, "available, maximum, allocation must be lists")
+    return deadlock.bankers_safety_algorithm(avail, max_m, alloc)
+
+@api.post("/api/deadlock/wfg")
+def deadlock_wfg(d: dict):
+    graph = d.get("graph", {})
+    if not isinstance(graph, dict): raise HTTPException(400, "graph must be dict")
+    cycle = deadlock.detect_deadlock_cycle(graph)
+    return {"has_cycle": cycle is not None, "cycle": cycle}
 
 @api.get("/api/report")
 def get_report(fmt: str = "html"):

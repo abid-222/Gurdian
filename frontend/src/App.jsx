@@ -22,11 +22,13 @@ import {
   X,
   Sun,
   Moon,
-  BellOff
+  BellOff,
+  ShieldAlert
 } from 'lucide-react'
 import { api } from './api'
 import Alerts from './pages/Alerts'
 import Auth from './pages/Auth'
+import Deadlock from './pages/Deadlock'
 import Demo from './pages/Demo'
 import FileVault from './pages/FileVault'
 import Generic from './pages/Generic'
@@ -59,6 +61,7 @@ const VIEWS = {
   settings: Settings,
   about: About,
   demo: Demo,
+  deadlock: Deadlock,
   reports: Reports,
 }
 
@@ -96,6 +99,7 @@ const NAV_GROUPS = [
     items: [
       { key: 'terminal', icon: TerminalIcon, label: 'Terminal' },
       { key: 'demo',     icon: Crosshair,    label: 'Demo Lab' },
+      { key: 'deadlock', icon: ShieldAlert,  label: 'Deadlock Lab' },
       { key: 'settings', icon: SettingsIcon, label: 'Settings' },
       { key: 'about',    icon: Info,         label: 'About'    },
     ],
@@ -281,6 +285,7 @@ function Main() {
         else if (e.key === 'n') navigate('network')
         else if (e.key === 't') navigate('terminal')
         else if (e.key === 'a') navigate('alerts')
+        else if (e.key === 'd') navigate('deadlock')
         lastKeyRef.current = { key: '', ts: 0 }
       } else if (e.key === 'g') {
         lastKeyRef.current = { key: 'g', ts: now }
