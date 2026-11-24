@@ -32,8 +32,19 @@ def test_optional_first_run_and_protected_flow(tmp_path, monkeypatch):
     assert login_res.status_code == 200
     tok2 = login_res.json()["session_token"]
 
+    # 4b. Change password (old -> new)
+    chg = c.post(
+        "/api/auth/change-password",
+        headers={**H, "X-Session-Token": tok2},
+        json={"old_password": "secret123", "new_password": "newpass456"},
+    )
+    assert chg.status_code == 200
+    tok3 = chg.json()["session_token"]
+    assert c.post("/api/auth/login", headers=H, json={"username": "abid", "password": "secret123"}).status_code == 401
+    assert c.post("/api/auth/login", headers=H, json={"username": "abid", "password": "newpass456"}).status_code == 200
+
     # 5. Disable protection -> returns to Open Mode
-    dis = c.post("/api/auth/disable", headers={**H, "X-Session-Token": tok2}, json={"password": "secret123"})
+    dis = c.post("/api/auth/disable", headers={**H, "X-Session-Token": tok3}, json={"password": "newpass456"})
     assert dis.status_code == 200
     assert dis.json()["enabled"] is False
     assert c.get("/api/score", headers=H).status_code == 200

@@ -139,3 +139,16 @@ def disable_auth(password: str, session_token: str | None) -> dict[str, Any]:
     if not hmac.compare_digest(candidate_hash, str(row["pw_hash"] or "")):
         raise PermissionError("Incorrect password")
     return setup_auth("open", current_token=session_token)
+
+
+def change_password(old_password: str, new_password: str, new_username: str = "", session_token: str | None = None) -> dict[str, Any]:
+    row = get_auth_row()
+    if not row or not row["enabled"]:
+        raise ValueError("Password protection is not enabled")
+    if not verify_session(session_token):
+        raise PermissionError("Active session required")
+    candidate_hash = _hash_password(old_password, str(row["salt"] or ""))
+    if not hmac.compare_digest(candidate_hash, str(row["pw_hash"] or "")):
+        raise PermissionError("Current password is incorrect")
+    target_user = new_username.strip() or str(row["username"] or "")
+    return setup_auth("protected", target_user, new_password, current_token=session_token)

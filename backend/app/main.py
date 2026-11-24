@@ -191,6 +191,18 @@ def auth_disable(d: dict, request: Request):
         return auth_guard.disable_auth(str(d.get("password", "")), request.headers.get("x-session-token"))
     except PermissionError as e: raise HTTPException(401, str(e))
 
+@api.post("/api/auth/change-password")
+def auth_change_password(d: dict, request: Request):
+    try:
+        return auth_guard.change_password(
+            str(d.get("old_password", "")),
+            str(d.get("new_password", "")),
+            str(d.get("new_username", "")),
+            request.headers.get("x-session-token"),
+        )
+    except PermissionError as e: raise HTTPException(401, str(e))
+    except ValueError as e: raise HTTPException(400, str(e))
+
 @api.get("/api/report")
 def get_report(fmt: str = "html"):
     if fmt not in ("html", "txt", "json"): raise HTTPException(404)

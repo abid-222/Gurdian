@@ -23,10 +23,13 @@ import {
   Sun,
   Moon,
   BellOff,
-  ShieldAlert
+  ShieldAlert,
+  Lock,
+  Unlock
 } from 'lucide-react'
 import { api, setSessionToken } from './api'
 import AuthGate from './components/AuthGate'
+import PasswordModal from './components/PasswordModal'
 import Alerts from './pages/Alerts'
 import Auth from './pages/Auth'
 import Deadlock from './pages/Deadlock'
@@ -214,6 +217,7 @@ function Main() {
     }
   })
   const [authStatus, setAuthStatus] = useState({ initialized: true, enabled: false, username: null, authenticated: true })
+  const [showPassModal, setShowPassModal] = useState(false)
 
   const refreshAuth = useCallback(() => {
     api('/api/auth/status')
@@ -728,26 +732,26 @@ function Main() {
             <kbd style={{ fontSize: 10, color: 'var(--dim)' }}>Ctrl+K</kbd>
           </button>
 
-          {/* Keybindings guide button */}
+          {/* Password Protection button (replaces ? button) */}
           <button
             className="btn btn-sm"
-            style={{ marginLeft: 4, padding: '3px 7px', fontSize: 11, borderRadius: 4 }}
-            onClick={() => setShowKeys(true)}
-            title="Keyboard shortcuts (?)"
+            style={{
+              marginLeft: 6,
+              padding: '3px 9px',
+              fontSize: 11,
+              borderRadius: 4,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              color: authStatus.enabled ? 'var(--g)' : 'var(--c)',
+              borderColor: authStatus.enabled ? 'rgba(76, 195, 138, 0.35)' : 'rgba(56, 189, 248, 0.35)',
+            }}
+            onClick={() => setShowPassModal(true)}
+            title={authStatus.enabled ? `Protected (${authStatus.username}) — Manage or Change Password` : 'Open Mode — Click to Add Password Protection'}
           >
-            <span style={{ fontSize: 11, color: 'var(--dim)' }}>?</span>
+            {authStatus.enabled ? <Lock size={12} /> : <Unlock size={12} />}
+            <span>{authStatus.enabled ? 'Protected' : 'Add Password'}</span>
           </button>
-
-          {authStatus.enabled && (
-            <button
-              className="btn btn-sm"
-              style={{ marginLeft: 6, padding: '3px 8px', fontSize: 11, borderRadius: 4, color: 'var(--g)' }}
-              onClick={handleLock}
-              title={`Protected as ${authStatus.username} — Click to Lock`}
-            >
-              Lock
-            </button>
-          )}
         </header>
 
         {/* ── Sidebar ── */}
@@ -779,6 +783,15 @@ function Main() {
           <V mod={page} page={page} src={src} bump={bump} theme={theme} setTheme={setTheme} authStatus={authStatus} onAuthChange={refreshAuth} />
         </main>
       </div>
+
+      {showPassModal && (
+        <PasswordModal
+          authStatus={authStatus}
+          onClose={() => setShowPassModal(false)}
+          onRefresh={refreshAuth}
+          onLock={handleLock}
+        />
+      )}
     </>
   )
 }
