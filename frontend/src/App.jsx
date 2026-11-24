@@ -25,7 +25,8 @@ import {
   BellOff,
   ShieldAlert
 } from 'lucide-react'
-import { api } from './api'
+import { api, setSessionToken } from './api'
+import AuthGate from './components/AuthGate'
 import Alerts from './pages/Alerts'
 import Auth from './pages/Auth'
 import Deadlock from './pages/Deadlock'
@@ -212,6 +213,25 @@ function Main() {
       return true
     }
   })
+  const [authStatus, setAuthStatus] = useState({ initialized: true, enabled: false, username: null, authenticated: true })
+
+  const refreshAuth = useCallback(() => {
+    api('/api/auth/status')
+      .then(st => {
+        if (st && typeof st.enabled === 'boolean') setAuthStatus(st)
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    refreshAuth()
+  }, [refreshAuth])
+
+  const handleLock = async () => {
+    await api('/api/auth/logout', 'POST').catch(() => {})
+    setSessionToken('')
+    setAuthStatus(prev => ({ ...prev, authenticated: false }))
+  }
 
   const toggleNotify = () => {
     setNotifyOn(prev => {
@@ -375,6 +395,10 @@ function Main() {
   const toastRisk = t => riskLevel(t.score ?? score)
   const dismissToast = id => setToasts(prev => prev.filter(t => t.id !== id))
   const risk = riskLevel(score)
+
+  if (!authStatus.initialized || (authStatus.enabled && !authStatus.authenticated)) {
+    return <AuthGate authStatus={authStatus} onSuccess={st => setAuthStatus(st)} />
+  }
 
   return (
     <>
@@ -713,6 +737,17 @@ function Main() {
           >
             <span style={{ fontSize: 11, color: 'var(--dim)' }}>?</span>
           </button>
+
+          {authStatus.enabled && (
+            <button
+              className="btn btn-sm"
+              style={{ marginLeft: 6, padding: '3px 8px', fontSize: 11, borderRadius: 4, color: 'var(--g)' }}
+              onClick={handleLock}
+              title={`Protected as ${authStatus.username} — Click to Lock`}
+            >
+              Lock
+            </button>
+          )}
         </header>
 
         {/* ── Sidebar ── */}
@@ -741,7 +776,7 @@ function Main() {
 
         {/* ── Main content ── */}
         <main className="main">
-          <V mod={page} page={page} src={src} bump={bump} theme={theme} setTheme={setTheme} />
+          <V mod={page} page={page} src={src} bump={bump} theme={theme} setTheme={setTheme} authStatus={authStatus} onAuthChange={refreshAuth} />
         </main>
       </div>
     </>

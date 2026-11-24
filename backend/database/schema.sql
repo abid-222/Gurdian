@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS system_stats(id INTEGER PRIMARY KEY, ts INTEGER, sour
 CREATE TABLE IF NOT EXISTS items(module TEXT, source TEXT, k TEXT, name TEXT, first_seen INTEGER, last_seen INTEGER, PRIMARY KEY(module, source, k));
 CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY, ts INTEGER, module TEXT, source TEXT, kind TEXT, summary TEXT, UNIQUE(module, source, kind, summary, ts));
 CREATE TABLE IF NOT EXISTS score_history(ts INTEGER, score INTEGER);
+CREATE TABLE IF NOT EXISTS app_auth(id INTEGER PRIMARY KEY CHECK (id = 1), initialized INTEGER DEFAULT 0, enabled INTEGER DEFAULT 0, username TEXT, salt TEXT, pw_hash TEXT, updated_at INTEGER);
+CREATE TABLE IF NOT EXISTS app_sessions(token TEXT PRIMARY KEY, username TEXT, expires_at INTEGER);
 CREATE INDEX IF NOT EXISTS idx_alerts_ack_rule ON alerts(acknowledged, rule_id);
 CREATE INDEX IF NOT EXISTS idx_alerts_dedup ON alerts(rule_id, source, message, ts);
 CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts DESC, module);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Palette, Clock, ShieldCheck, Lock, Check, Plus, Server, Settings as SettingsIcon } from 'lucide-react'
-import { api } from '../api'
+import { Palette, Clock, ShieldCheck, Lock, Unlock, Check, Plus, Server, Settings as SettingsIcon } from 'lucide-react'
+import { api, setSessionToken } from '../api'
 import { Badge, Btn, Card, ErrorBox } from '../components/ui'
 
 const THEMES = [
@@ -31,11 +31,15 @@ const POLICIES = [
   { title: 'Sandboxed SQLite WAL', status: 'ACTIVE', desc: 'Baselines, alerts, and audit logs persist in an isolated WAL-mode database.' },
 ]
 
-export default function Settings({ theme, setTheme }) {
+export default function Settings({ theme, setTheme, authStatus, onAuthChange }) {
   const [newPath, setNewPath] = useState('')
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showAuthForm, setShowAuthForm] = useState(false)
+  const [authUser, setAuthUser] = useState('')
+  const [authPass, setAuthPass] = useState('')
+  const [authBusy, setAuthBusy] = useState(false)
   const [intervalTime, setIntervalTime] = useState(() => {
     try {
       return localStorage.getItem('guardian_refresh_interval') || '3s'
@@ -80,6 +84,45 @@ export default function Settings({ theme, setTheme }) {
       setErr(ex.message || 'Failed to add file to watchlist')
     }
     setLoading(false)
+  }
+
+  const enableProtection = async e => {
+    e.preventDefault()
+    setAuthBusy(true)
+    setErr('')
+    setMsg('')
+    try {
+      const res = await api('/api/auth/setup', 'POST', { mode: 'protected', username: authUser.trim(), password: authPass })
+      if (res.session_token) setSessionToken(res.session_token)
+      setShowAuthForm(false)
+      setAuthUser('')
+      setAuthPass('')
+      setMsg(`Password protection enabled for "${res.username}".`)
+      onAuthChange?.()
+    } catch (ex) {
+      setErr(ex.message || 'Failed to enable protection')
+    } finally {
+      setAuthBusy(false)
+    }
+  }
+
+  const disableProtection = async e => {
+    e.preventDefault()
+    setAuthBusy(true)
+    setErr('')
+    setMsg('')
+    try {
+      await api('/api/auth/disable', 'POST', { password: authPass })
+      setSessionToken('')
+      setShowAuthForm(false)
+      setAuthPass('')
+      setMsg('Password protection disabled (switched to Open Mode).')
+      onAuthChange?.()
+    } catch (ex) {
+      setErr(ex.message || 'Incorrect password')
+    } finally {
+      setAuthBusy(false)
+    }
   }
 
   return (
@@ -223,6 +266,85 @@ export default function Settings({ theme, setTheme }) {
           </div>
         </Card>
       </div>
+
+      {/* Access Protection (Optional User ID & Password) */}
+      <Card
+        title={
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {authStatus?.enabled ? <Lock size={15} color="var(--g)" /> : <Unlock size={15} color="var(--c)" />}
+            Access Protection (User ID &amp; Password)
+          </span>
+        }
+        style={{ marginBottom: 0 }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)' }}>
+                {authStatus?.enabled ? `Protected Mode (${authStatus.username})` : 'Open Mode (No Password Required)'}
+              </span>
+              <Badge v={authStatus?.enabled ? 'PROTECTED' : 'OPEN'} tone={authStatus?.enabled ? 'g' : 'c'} />
+            </div>
+            <div className="dim" style={{ fontSize: 12 }}>
+              {authStatus?.enabled
+                ? 'Console requires User ID & Password to unlock. You can switch back to Open Mode anytime.'
+                : 'Anyone on this PC can open the dashboard directly. Add a User ID & Password anytime for protection.'}
+            </div>
+          </div>
+
+          <Btn
+            variant={authStatus?.enabled ? 'danger' : 'primary'}
+            onClick={() => {
+              setShowAuthForm(p => !p)
+              setErr('')
+            }}
+          >
+            {authStatus?.enabled ? 'Disable Protection' : 'Add Now'}
+          </Btn>
+        </div>
+
+        {showAuthForm && !authStatus?.enabled && (
+          <form onSubmit={enableProtection} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
+            <input
+              className="table-search"
+              style={{ flex: 1, minWidth: 160 }}
+              placeholder="New User ID (min 3 chars)"
+              value={authUser}
+              onChange={e => setAuthUser(e.target.value)}
+              required
+            />
+            <input
+              type="password"
+              className="table-search"
+              style={{ flex: 1, minWidth: 160 }}
+              placeholder="Password (min 6 chars)"
+              value={authPass}
+              onChange={e => setAuthPass(e.target.value)}
+              required
+            />
+            <Btn type="submit" variant="primary" loading={authBusy}>
+              Save &amp; Protect
+            </Btn>
+          </form>
+        )}
+
+        {showAuthForm && authStatus?.enabled && (
+          <form onSubmit={disableProtection} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
+            <input
+              type="password"
+              className="table-search"
+              style={{ flex: 1, minWidth: 220 }}
+              placeholder="Confirm current password to disable"
+              value={authPass}
+              onChange={e => setAuthPass(e.target.value)}
+              required
+            />
+            <Btn type="submit" variant="danger" loading={authBusy}>
+              Confirm Open Mode
+            </Btn>
+          </form>
+        )}
+      </Card>
 
       {/* File Vault Watchlist Management */}
       <Card

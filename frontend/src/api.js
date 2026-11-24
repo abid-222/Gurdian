@@ -1,6 +1,31 @@
-export const api = (p, m = 'GET', body) =>
-  fetch(p, { method: m, headers: body ? { 'Content-Type': 'application/json' } : undefined, body: body && JSON.stringify(body) })
-    .then(async r => { if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || `${r.status} ${p}`); return r.json() })
+export const getSessionToken = () => {
+  try {
+    return sessionStorage.getItem('guardian_session_token') || ''
+  } catch {
+    return ''
+  }
+}
+
+export const setSessionToken = tok => {
+  try {
+    if (tok) sessionStorage.setItem('guardian_session_token', tok)
+    else sessionStorage.removeItem('guardian_session_token')
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export const api = (p, m = 'GET', body) => {
+  const headers = {}
+  if (body) headers['Content-Type'] = 'application/json'
+  const sess = getSessionToken()
+  if (sess) headers['X-Session-Token'] = sess
+  return fetch(p, { method: m, headers: Object.keys(headers).length ? headers : undefined, body: body && JSON.stringify(body) })
+    .then(async r => {
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || `${r.status} ${p}`)
+      return r.json()
+    })
+}
 
 api.get = p => api(p, 'GET')
 api.post = (p, body) => api(p, 'POST', body)

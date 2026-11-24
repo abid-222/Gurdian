@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketException
 from fastapi.middleware.cors import CORSMiddleware
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from app import deadlock, live, report, terminal
+from app import auth_guard, deadlock, live, report, terminal
 from app.parsers import COLS, KEY
 from app.runner import BASH, CACHE, FOLDER, ROOT, USER_WATCH, history, save_baseline, scan_one
 from database import db as database
@@ -26,6 +26,9 @@ async def add_security_headers(request: Request, call_next):
 def ok_token(conn): return hmac.compare_digest(conn.headers.get("x-guardian-token", ""), TOKEN)
 def auth_http(request: Request):
     if not ok_token(request): raise HTTPException(401, "bad or missing X-Guardian-Token")
+    if auth_guard.is_protection_enabled() and request.url.path not in {"/api/auth/status", "/api/auth/login"}:
+        if not auth_guard.verify_session(request.headers.get("x-session-token")):
+            raise HTTPException(401, "session login required")
 def auth_ws(ws: WebSocket):
     if not ok_token(ws): raise WebSocketException(code=1008)
 api = APIRouter(dependencies=[Depends(auth_http)])
@@ -158,6 +161,35 @@ def deadlock_wfg(d: dict):
     if not isinstance(graph, dict): raise HTTPException(400, "graph must be dict")
     cycle = deadlock.detect_deadlock_cycle(graph)
     return {"has_cycle": cycle is not None, "cycle": cycle}
+
+@api.get("/api/auth/status")
+def auth_status(request: Request):
+    return auth_guard.get_status(request.headers.get("x-session-token"))
+
+@api.post("/api/auth/setup")
+def auth_setup(d: dict, request: Request):
+    mode = str(d.get("mode", "open"))
+    if mode not in ("open", "protected"): raise HTTPException(400, "mode must be 'open' or 'protected'")
+    try:
+        return auth_guard.setup_auth(mode, str(d.get("username", "")), str(d.get("password", "")), request.headers.get("x-session-token"))
+    except PermissionError as e: raise HTTPException(401, str(e))
+    except ValueError as e: raise HTTPException(400, str(e))
+
+@api.post("/api/auth/login")
+def auth_login(d: dict):
+    try:
+        return auth_guard.login(str(d.get("username", "")), str(d.get("password", "")))
+    except PermissionError as e: raise HTTPException(401, str(e))
+
+@api.post("/api/auth/logout")
+def auth_logout(request: Request):
+    return auth_guard.logout(request.headers.get("x-session-token"))
+
+@api.post("/api/auth/disable")
+def auth_disable(d: dict, request: Request):
+    try:
+        return auth_guard.disable_auth(str(d.get("password", "")), request.headers.get("x-session-token"))
+    except PermissionError as e: raise HTTPException(401, str(e))
 
 @api.get("/api/report")
 def get_report(fmt: str = "html"):
