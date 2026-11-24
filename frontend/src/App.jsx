@@ -191,6 +191,8 @@ function Main() {
     }
   })
   const [pal, setPal]         = useState(false)
+  const [showKeys, setShowKeys] = useState(false)
+  const lastKeyRef            = useRef({ key: '', ts: 0 })
   const [score, setScore]     = useState(0)
   const [theme, setTheme]     = useState(() =>
     typeof localStorage !== 'undefined'
@@ -263,11 +265,30 @@ function Main() {
     bump()
     const interval = setInterval(bump, 4000)
     const onKey = e => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        if (e.key === 'Escape') setPal(false)
+        return
+      }
       if (e.ctrlKey && e.key === 'k') { e.preventDefault(); setPal(v => !v) }
+      if (e.key === '?') { setShowKeys(v => !v) }
+      if (e.key === 'Escape') { setShowKeys(false); setPal(false) }
+
+      const now = Date.now()
+      if (lastKeyRef.current.key === 'g' && now - lastKeyRef.current.ts < 1000) {
+        if (e.key === 'o') navigate('overview')
+        else if (e.key === 'p') navigate('process')
+        else if (e.key === 'l') navigate('live')
+        else if (e.key === 'n') navigate('network')
+        else if (e.key === 't') navigate('terminal')
+        else if (e.key === 'a') navigate('alerts')
+        lastKeyRef.current = { key: '', ts: 0 }
+      } else if (e.key === 'g') {
+        lastKeyRef.current = { key: 'g', ts: now }
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => { clearInterval(interval); window.removeEventListener('keydown', onKey) }
-  }, [bump])
+  }, [bump, navigate])
 
   const V = VIEWS[page] || Overview
   const toastRisk = t => riskLevel(t.score ?? score)
@@ -330,6 +351,58 @@ function Main() {
           go={p => { navigate(p); setPal(false) }}
           close={() => setPal(false)}
         />
+      )}
+
+      {/* ── Keyboard shortcuts overlay (Outside Grid) ── */}
+      {showKeys && (
+        <div className="pal-overlay" onClick={() => setShowKeys(false)}>
+          <div className="pal" onClick={e => e.stopPropagation()} style={{ maxWidth: 440 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, borderBottom: '1px solid var(--line)', paddingBottom: 8 }}>
+              <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--fg)' }}>Keyboard Shortcuts</span>
+              <button
+                className="btn btn-sm"
+                style={{ padding: '2px 6px', border: 'none', background: 'transparent' }}
+                onClick={() => setShowKeys(false)}
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', fontSize: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                <span className="dim">Jump to page</span>
+                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>Ctrl+K</kbd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                <span className="dim">Shortcuts guide</span>
+                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>?</kbd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                <span className="dim">Overview</span>
+                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>g o</kbd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                <span className="dim">Processes</span>
+                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>g p</kbd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                <span className="dim">Live Stream</span>
+                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>g l</kbd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                <span className="dim">Network</span>
+                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>g n</kbd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                <span className="dim">Terminal</span>
+                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>g t</kbd>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                <span className="dim">Alerts</span>
+                <kbd style={{ fontFamily: 'monospace', background: 'var(--panel-hover)', padding: '2px 6px', borderRadius: 3 }}>g a</kbd>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Application Grid Shell ── */}
@@ -501,6 +574,16 @@ function Main() {
             title="Command palette (Ctrl+K)"
           >
             <kbd style={{ fontSize: 10, color: 'var(--dim)' }}>Ctrl+K</kbd>
+          </button>
+
+          {/* Keybindings guide button */}
+          <button
+            className="btn btn-sm"
+            style={{ marginLeft: 4, padding: '3px 7px', fontSize: 11, borderRadius: 4 }}
+            onClick={() => setShowKeys(true)}
+            title="Keyboard shortcuts (?)"
+          >
+            <span style={{ fontSize: 11, color: 'var(--dim)' }}>?</span>
           </button>
         </header>
 

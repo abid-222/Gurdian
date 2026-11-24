@@ -225,10 +225,36 @@ export default function Process({ src }) {
     if (col === 'source') return <PlatformBadge v={row.source} />
     if (col === 'flag')   return <FlagBadge v={row.flag} />
     if (col === 'mem')    return <span className="mono">{row.mem != null ? Math.round(row.mem / 1024) : '—'}</span>
-    if (col === 'cpu')    return <span className="mono" style={{ color: Number(row.cpu) > 40 ? 'var(--r)' : 'inherit', fontWeight: Number(row.cpu) > 40 ? 700 : 400 }}>{row.cpu ?? '—'}</span>
-    if (col === 'pid')    return <span className="mono" style={{ color: 'var(--c)', fontWeight: 600 }}>{row.pid}</span>
+    if (col === 'cpu')    return (
+      <span className="mono" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: Number(row.cpu) > 40 ? 'var(--r)' : 'inherit', fontWeight: Number(row.cpu) > 40 ? 600 : 400 }}>
+        <span>{row.cpu ?? '—'}</span>
+        {Number(row.cpu) > 0 && (
+          <span style={{ width: 36, height: 4, background: 'var(--line)', borderRadius: 2, display: 'inline-block', overflow: 'hidden' }}>
+            <span style={{ display: 'block', height: '100%', width: `${Math.min(100, Number(row.cpu))}%`, background: Number(row.cpu) > 40 ? 'var(--r)' : 'var(--accent)' }} />
+          </span>
+        )}
+      </span>
+    )
+    if (col === 'pid')    return <span className="mono" style={{ color: 'var(--fg)', fontWeight: 500 }}>{row.pid}</span>
 
     if (col === 'name') {
+      if (tree && row._depth !== undefined) {
+        return (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}>
+            <span style={{ color: 'var(--dim)', userSelect: 'none' }}>
+              {row.name.slice(0, row.name.indexOf(row._rawName))}
+            </span>
+            <span style={{ fontWeight: row._kids ? 600 : 400, color: 'var(--fg)' }}>
+              {row._rawName}
+            </span>
+            {row._kids > 0 && (
+              <span className="badge" style={{ fontSize: 9.5, padding: '1px 5px', marginLeft: 4, color: 'var(--dim)', borderColor: 'var(--line)' }}>
+                {row._kids} {row._kids === 1 ? 'child' : 'children'}
+              </span>
+            )}
+          </span>
+        )
+      }
       return <span>{row.name}</span>
     }
 
@@ -493,27 +519,36 @@ export default function Process({ src }) {
 
                 {chain(sel).length > 0 && (
                   <div style={{ borderTop: '1px solid var(--line)', paddingTop: 10, marginTop: 10 }}>
-                    <p style={{ marginTop: 8, marginBottom: 4 }}>
+                    <p style={{ marginTop: 8, marginBottom: 8, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <b>Parent chain:</b>
+                      <span className="dim" style={{ fontSize: 10 }}>{chain(sel).length} ancestor(s)</span>
                     </p>
-                    {chain(sel).map((p, idx) => (
-                      <div
-                        key={p.source + p.pid}
-                        className="dim"
-                        style={{
-                          paddingLeft: idx * 8 + 6,
-                          fontSize: 11,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          lineHeight: 1.8
-                        }}
-                      >
-                        <span style={{ color: 'var(--c)' }}>↑</span>
-                        <span style={{ color: 'var(--fg)', fontWeight: 500 }}>{p.name}</span>
-                        <span className="mono" style={{ opacity: 0.6 }}>({p.pid})</span>
-                      </div>
-                    ))}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {chain(sel).map((p, idx) => (
+                        <div
+                          key={p.source + p.pid}
+                          style={{
+                            padding: '4px 8px',
+                            background: 'var(--panel-hover)',
+                            borderRadius: 4,
+                            fontSize: 11,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 6
+                          }}
+                        >
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
+                            <span style={{ color: 'var(--dim)', userSelect: 'none' }}>{'↳'.repeat(idx + 1)}</span>
+                            <span style={{ color: p.flag !== 'ok' ? 'var(--r)' : 'var(--fg)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                          </span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                            <span className="mono dim" style={{ fontSize: 10 }}>({p.pid})</span>
+                            {p.flag !== 'ok' && <FlagBadge v={p.flag} />}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

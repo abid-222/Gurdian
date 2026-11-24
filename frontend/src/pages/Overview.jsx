@@ -301,24 +301,33 @@ export default function Overview({ src = 'both', bump }) {
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', padding: '8px 0', flexWrap: 'wrap', gap: 16 }}>
             {/* SVG Circular Gauge */}
-            <div style={{ position: 'relative', width: 120, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width={120} height={120} style={{ transform: 'rotate(-90deg)' }}>
+            <div style={{ position: 'relative', width: 130, height: 130, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width={130} height={130} style={{ transform: 'rotate(-90deg)' }}>
                 <circle
-                  cx={60}
-                  cy={60}
-                  r={46}
+                  cx={65}
+                  cy={65}
+                  r={50}
                   stroke="var(--line)"
                   strokeWidth={8}
                   fill="none"
                 />
                 <circle
-                  cx={60}
-                  cy={60}
-                  r={46}
+                  cx={65}
+                  cy={65}
+                  r={42}
+                  stroke="var(--line)"
+                  strokeWidth={0.8}
+                  strokeDasharray="2 3"
+                  fill="none"
+                />
+                <circle
+                  cx={65}
+                  cy={65}
+                  r={50}
                   stroke={risk.color}
                   strokeWidth={8}
-                  strokeDasharray={289.02}
-                  strokeDashoffset={289.02 - (289.02 * Math.min(100, score)) / 100}
+                  strokeDasharray={314.16}
+                  strokeDashoffset={314.16 - (314.16 * Math.min(100, score)) / 100}
                   strokeLinecap="round"
                   fill="none"
                   style={{
